@@ -1,0 +1,4 @@
+*.rest
+.env
+.yaml
+node_modules
