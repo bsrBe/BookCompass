@@ -1,12 +1,13 @@
 const express = require("express")
-const cookieParser = require("cookie-parser");
-const cors = require("cors");
+const cookieParser = require("cookie-parser")
+const cors = require("cors")
 const connectDB = require("./config/db")
-const app = express();
-const swaggerUi = require('swagger-ui-express');
+const app = express()
+const swaggerUi = require('swagger-ui-express')
 const YAML = require("yamljs");
 const authRoutes = require("./routes/authRoutes")
 const booksRoutes = require("./routes/bookRoutes")
+const cartRoutes = require("./routes/cartRoutes")
 
 
 require("dotenv").config({path:'/config/.env'});
@@ -39,9 +40,10 @@ app.use(express.json());
 
 
 app.use("/api/auth", authRoutes);
-app.use("/api/books" ,booksRoutes)
+app.use("/api/books" ,booksRoutes);
+app.use("/api/cart" , cartRoutes);
 connectDB();
 
 app.listen(5000, () => {
-  console.log("server listenning on Port",process.env.PORT||5000);
+  console.log("server listening on Port",process.env.PORT||5000);
 });

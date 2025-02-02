@@ -35,4 +35,12 @@ const checkSellerRole = (req , res ,next) => {
 }
 }
 
-module.exports = { protect , checkSellerRole};
+const checkBuyerRole = (req , res , next)=> {
+  if(req.user && req.user.role === "buyer"){
+    next()
+  }else {
+    return res.status(403).json({ error: "Access denied. Only buyer users not seller(admins) can perform this action." })
+  }
+}
+
+module.exports = { protect , checkSellerRole , checkBuyerRole};
