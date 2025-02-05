@@ -8,11 +8,11 @@ const YAML = require("yamljs");
 const authRoutes = require("./routes/authRoutes")
 const booksRoutes = require("./routes/bookRoutes")
 const cartRoutes = require("./routes/cartRoutes")
-
+const orderRoutes = require("./routes/orderRoutes")
 
 require("dotenv").config({path:'/config/.env'});
 
-const allowedOrigins = ["http://localhost:5173", "http://localhost:4173", "http://localhost:5000"];
+const allowedOrigins = ["http://localhost:5173", "http://localhost:4173", "http://localhost:5000" , "bookCompass.html"];
 
 app.use(
   cors({
@@ -42,6 +42,7 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/books" ,booksRoutes);
 app.use("/api/cart" , cartRoutes);
+app.use("/api/order" , orderRoutes);
 connectDB();
 
 app.listen(5000, () => {
