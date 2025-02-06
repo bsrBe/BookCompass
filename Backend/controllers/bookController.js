@@ -1,7 +1,10 @@
 const Book = require("../models/bookModel");
+const Review = require("../models/ReviewModel")
 const mongoose = require("mongoose");
 const { uploadImage } = require("../utils/cloudinary");
 const fs = require("fs");
+
+
 
 const createBook = async (req, res) => {
   const sellerId = req.user.id;
@@ -66,11 +69,26 @@ const getBook = async (req, res) => {
     // Fetch books based on query
     let books = await Book.find(query).sort({ createdAt: -1 });
 
+    books = await Promise.all(
+      books.map(async (book) => {
+        const reviews = await Review.find({ book: book._id })
+        .select('comment user rating')
+        .populate({
+          path: 'user',
+          select: 'name -_id', // Select only the name and exclude _id
+        });
+        return {
+          ...book.toObject(),
+          reviews, // Attach reviews to the book object
+        };
+      })
+    );
+    
     // Sorting logic
     if (sort === "price-asc") {
-      books.sort((a, b) => a.price - b.price);
+      books = await Book.find(query).sort({ price: 1 });
     } else if (sort === "price-desc") {
-      books.sort((a, b) => b.price - a.price);
+      books = await Book.find(query).sort({ price: -1 });
     }
 
     res.status(200).json(books);
