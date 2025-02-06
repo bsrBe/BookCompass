@@ -9,6 +9,7 @@ const authRoutes = require("./routes/authRoutes")
 const booksRoutes = require("./routes/bookRoutes")
 const cartRoutes = require("./routes/cartRoutes")
 const orderRoutes = require("./routes/orderRoutes")
+const reviewRoutes = require("./routes/reviewRoutes");
 
 require("dotenv").config({path:'/config/.env'});
 
@@ -43,6 +44,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/books" ,booksRoutes);
 app.use("/api/cart" , cartRoutes);
 app.use("/api/order" , orderRoutes);
+app.use("/api/books", reviewRoutes)
 connectDB();
 
 app.listen(5000, () => {
