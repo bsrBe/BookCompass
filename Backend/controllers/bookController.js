@@ -103,33 +103,72 @@ const getSingleBook = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ error: "Invalid book ID" });
     }
-    const singleBook = await Book.findById(id);
-    if (!singleBook) {
+
+    // Find the book by ID
+    let book = await Book.findById(id);
+
+    if (!book) {
       return res.status(404).json({ msg: "Book not found" });
     }
-    return res.status(200).json({ success: true, data: singleBook });
+
+    // Fetch reviews separately
+    const reviews = await Review.find({ book: book._id })
+      .select('comment user rating')
+      .populate({
+        path: 'user',
+        select: 'name -_id', // Select only the name and exclude _id
+      });
+
+    // Return the book with the reviews
+    res.status(200).json({
+      success: true,
+      data: {
+        ...book.toObject(),
+        reviews,
+      },
+    });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    res.status(500).json({ error: error.message });
   }
 };
 
+
 //fetch books created by me
 const fetchMyBooks = async (req, res) => {
- 
-    try {
-      const products = await Book.find({ seller: req.user.id }); // Fetch products owned by the seller
-  
-      if (!products || products.length === 0) {
-        return res.status(404).json({ message: "You have no books yet." });
-      }
-  
-      res.status(200).json(products);
-    } catch (error) {
-      console.error("Error fetching seller's books:", error);
-      res.status(500).json({ error: "Internal server error" });
+  try {
+    // Fetch books owned by the seller
+    const books = await Book.find({ seller: req.user.id });
+
+    if (!books || books.length === 0) {
+      return res.status(404).json({ message: "You have no books yet." });
     }
-  };
-  
+
+    // Fetch reviews for each book
+    const booksWithReviews = await Promise.all(
+      books.map(async (book) => {
+        const reviews = await Review.find({ book: book._id })
+          .select('comment user rating')
+          .populate({
+            path: 'user',
+            select: 'name -_id', // Select only the name and exclude _id
+          });
+
+        return {
+          ...book.toObject(),
+          reviews, // Attach reviews to the book object
+        };
+      })
+    );
+
+    // Return books with reviews
+    res.status(200).json({ success: true, data: booksWithReviews });
+
+  } catch (error) {
+    console.error("Error fetching seller's books:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 
 const updateBook = async (req, res) => {
   const { id } = req.params;
