@@ -19,7 +19,7 @@ cloudinary.config({
 const uploadImage = (buffer) => {
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
-      { folder: "product_images" }, // Optional: Organize images in a folder
+      { folder: "product_images" }, 
       (error, result) => {
         if (error) reject(error);
         else resolve(result.secure_url);

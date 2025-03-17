@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spare Parts E-Commerce</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f8f9fa;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background-color: #007bff;
+      color: white;
+      padding: 10px 0;
+      text-align: center;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 20px;
+    }
+    .button {
+      background-color: #28a745;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      cursor: pointer;
+    }
+    .card {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    .book-card {
+      background-color: white;
+      border: 1px solid #ddd;
+      padding: 15px;
+      width: 200px;
+      border-radius: 10px;
+      text-align: center;
+    }
+    .book-card img {
+      width: 100%;
+      border-radius: 5px;
+    }
+    .book-card h3 {
+      font-size: 18px;
+    }
+    .book-card p {
+      font-size: 14px;
+      color: #555;
+    }
+    .cart-button, .order-button {
+      background-color: #17a2b8;
+      color: white;
+      padding: 5px 10px;
+      margin-top: 10px;
+      border: none;
+      cursor: pointer;
+    }
+    .form-container {
+      margin-top: 20px;
+    }
+    .form-container input, .form-container textarea {
+      width: 100%;
+      padding: 10px;
+      margin: 5px 0;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Spare Parts E-Commerce</h1>
+</header>
+
+<div class="container">
+  <div class="auth">
+    <!-- Login / Register Form -->
+    <div id="loginForm">
+      <h2>Login</h2>
+      <input type="email" id="loginEmail" placeholder="Email" required><br>
+      <input type="password" id="loginPassword" placeholder="Password" required><br>
+      <button class="button" onclick="login()">Login</button>
+    </div>
+
+    <div id="registerForm" style="display: none;">
+      <h2>Register</h2>
+      <input type="email" id="registerEmail" placeholder="Email" required><br>
+      <input type="password" id="registerPassword" placeholder="Password" required><br>
+      <button class="button" onclick="register()">Register</button>
+    </div>
+  </div>
+
+  <div class="book-section">
+    <h2>Available Books</h2>
+    <div class="card" id="bookCards">
+      <!-- Books will be loaded here -->
+    </div>
+  </div>
+
+  <div class="cart-section">
+    <h2>Your Cart</h2>
+    <div id="cartItems">
+      <!-- Cart items will be displayed here -->
+    </div>
+    <button class="cart-button" onclick="createOrder()">Place Order</button>
+  </div>
+</div>
+
+<div class="form-container">
+  <h3>Write a Review</h3>
+  <textarea id="reviewText" placeholder="Write your review here"></textarea><br>
+  <button class="button" onclick="submitReview()">Submit Review</button>
+</div>
+
+<script>
+  let token = ''; // Store JWT token
+
+  // API URL base
+  const apiUrl = 'http://localhost:5000/api';
+
+  // Login function
+  async function login() {
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPassword').value;
+
+    try {
+      const response = await fetch(`${apiUrl}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        token = data.token;
+        alert('Login successful!');
+        loadBooks(); // Load books after login
+      } else {
+        alert(data.message || 'Login failed!');
+      }
+    } catch (error) {
+      console.error('Error logging in:', error);
+      alert('Login failed!');
+    }
+  }
+
+  // Register function
+  async function register() {
+    const email = document.getElementById('registerEmail').value;
+    const password = document.getElementById('registerPassword').value;
+
+    try {
+      const response = await fetch(`${apiUrl}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        alert('Registration successful!');
+        document.getElementById('loginForm').style.display = 'block';
+        document.getElementById('registerForm').style.display = 'none';
+      } else {
+        alert(data.message || 'Registration failed!');
+      }
+    } catch (error) {
+      console.error('Error registering:', error);
+      alert('Registration failed!');
+    }
+  }
+
+  // Load books
+  async function loadBooks() {
+    try {
+      const response = await fetch(`${apiUrl}/books/getBook`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const books = await response.json();
+      displayBooks(books);
+    } catch (error) {
+      console.error('Error loading books:', error);
+    }
+  }
+
+  // Display books
+  function displayBooks(books) {
+    const bookCards = document.getElementById('bookCards');
+    bookCards.innerHTML = '';
+
+    books.forEach(book => {
+      const bookCard = document.createElement('div');
+      bookCard.classList.add('book-card');
+      bookCard.innerHTML = `
+        <img src="${book.imageUrl}" alt="${book.title}">
+        <h3>${book.title}</h3>
+        <p>${book.price} USD</p>
+        <button class="cart-button" onclick="addToCart('${book._id}')">Add to Cart</button>
+      `;
+      bookCards.appendChild(bookCard);
+    });
+  }
+
+  // Add book to cart
+  async function addToCart(bookId) {
+    try {
+      const response = await fetch(`${apiUrl}/cart/createCart`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ bookId })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        alert('Added to cart!');
+        loadCart();
+      } else {
+        alert(data.message || 'Failed to add to cart');
+      }
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+    }
+  }
+
+  // Load cart items
+  async function loadCart() {
+    try {
+      const response = await fetch(`${apiUrl}/cart/getCart`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const cartItems = await response.json();
+      displayCartItems(cartItems);
+    } catch (error) {
+      console.error('Error loading cart:', error);
+    }
+  }
+
+  // Display cart items
+  function displayCartItems(cartItems) {
+    const cartItemsContainer = document.getElementById('cartItems');
+    cartItemsContainer.innerHTML = '';
+    cartItems.forEach(item => {
+      cartItemsContainer.innerHTML += `
+        <div>${item.book.title} - ${item.quantity} pcs</div>
+      `;
+    });
+  }
+
+  // Place order
+  async function createOrder() {
+    try {
+      const response = await fetch(`${apiUrl}/order/createOrder`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (response.ok) {
+        alert('Order placed successfully!');
+      } else {
+        alert(data.message || 'Failed to place order');
+      }
+    } catch (error) {
+      console.error('Error placing order:', error);
+    }
+  }
+
+  // Submit review
+  async function submitReview() {
+    const reviewText = document.getElementById('reviewText').value;
+    const bookId = 'someBookId'; // This should be dynamically set based on selected book
+
+    try {
+      const response = await fetch(`${apiUrl}/books/${bookId}/reviews`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ reviewText })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        alert('Review submitted!');
+      } else {
+        alert(data.message || 'Failed to submit review');
+      }
+    } catch (error) {
+      console.error('Error submitting review:', error);
+    }
+  }
+</script>
+
+</body>
+</html>
