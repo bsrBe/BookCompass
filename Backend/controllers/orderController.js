@@ -2,6 +2,11 @@ const mongoose = require('mongoose')
 const Order = require("../models/orderModel")
 const Cart = require("../models/cartModel")
 const Book = require("../models/bookModel")
+const axios = require("axios")
+require('dotenv').config();
+const CHAPA_SECRET_KEY = process.env.CHAPA_SECRET_KEY;
+const CHAPA_API_URL = 'https://api.chapa.co/v1/transaction/initialize';
+const CHAPA_VERIFY_URL = 'https://api.chapa.co/v1/transaction/verify/';
 
 const createOrder = async (req, res) => {
   try {
@@ -10,87 +15,254 @@ const createOrder = async (req, res) => {
     const { shippingAddress, itemsId } = req.body;
     const userId = req.user.id;
 
-    const cart = await Cart.findOne({ user: userId }).populate('items.book');
-    
-    if (!cart) {
-      return res.status(404).json({ message: "Cart not found for this user" });
-    }
-
+    // Validate input
     if (!itemsId || itemsId.length === 0) {
       return res.status(400).json({ message: "No items selected" });
     }
 
-    // Filter the selected items from the cart
+    // Fetch books
+    const books = await Book.find({ _id: { $in: itemsId } });
+    if (books.length !== itemsId.length) {
+      return res.status(400).json({ message: 'Some items not found' });
+    }
+
+    // Fetch user's cart
+    const cart = await Cart.findOne({ user: userId }).populate('items.book');
+    if (!cart) {
+      return res.status(404).json({ message: "Cart not found for this user" });
+    }
+
+    // Filter selected items from cart
     const selectedItems = cart.items.filter(item =>
       itemsId.includes(item.book._id.toString())
     );
-
-    if (!selectedItems || selectedItems.length === 0) {
+    if (selectedItems.length === 0) {
       return res.status(400).json({ message: "No valid items selected from the cart" });
     }
 
-    // Check if an order with the same user, cart, and items already exists
-    const existingOrder = await Order.findOne({ user: userId, cart: cart._id }).populate('items.book');
+    // Check for existing order with same user and items (regardless of cart state)
+    const existingOrder = await Order.findOne({
+      user: userId,
+      'items.book': { $all: itemsId },  // Matches all book IDs
+      paymentStatus: { $in: ['pending', 'completed'] },  // Consider only active orders
+    }).populate('items.book');
 
     if (existingOrder) {
-      // Create a map for existing items by book _id for efficient lookup
-      const existingItemsMap = new Map(existingOrder.items.map(item => [item.book._id.toString(), item]));
-
-      // Check if the selected items already exist in the existing order
+      const existingItemsMap = new Map(existingOrder.items.map(item => [item.book._id.toString(), item.quantity]));
       const isRedundant = selectedItems.every(newItem => {
-        const existingItem = existingItemsMap.get(newItem.book._id.toString());
-        return existingItem && existingItem.quantity === newItem.quantity;
+        const existingQuantity = existingItemsMap.get(newItem.book._id.toString());
+        return existingQuantity !== undefined && existingQuantity === newItem.quantity;
       });
 
       if (isRedundant) {
-        return res.status(400).json({ message: "This order has already been placed with the same items and quantities." });
+        return res.status(400).json({ 
+          message: "This order has already been placed with the same items and quantities.",
+          existingOrderId: existingOrder._id
+        });
       }
     }
 
-    // Create the order items and calculate the total price
+    // Create order items
     const orderItems = selectedItems.map((item) => ({
       book: item.book._id,
       quantity: item.quantity,
       price: item.book.price,
+      seller: item.book.seller,
     }));
 
-    const totalPrice = selectedItems.reduce((total, item) => total + item.book.price * item.quantity, 0);
+    const totalPrice = orderItems.reduce((total, item) => total + item.price * item.quantity, 0);
+    const txRef = `order-${userId}-${Date.now()}`;
 
-    // Create the order document
+    // Create the order
     const order = new Order({
       user: userId,
       cart: cart._id,
       items: orderItems,
       totalPrice,
       shippingAddress,
+      paymentStatus: 'pending',
+      txRef,
     });
-
     await order.save();
 
-    // Remove the selected items from the cart and update the total price
-    cart.items = cart.items.filter((item) => !itemsId.includes(item._id.toString()));
-    cart.totalPrice = cart.items.reduce((total, item) => {
-      if (item.book && typeof item.book.price === 'number') {
-        return total + item.quantity * item.book.price;
-      }
-      return total;
-    }, 0);
+    // Chapa payment data
+    const paymentData = {
+      amount: totalPrice.toString(),
+      currency: 'ETB',
+      email: req.user.email || 'customer@example.com',
+      first_name: req.user.name?.split(' ')[0] || 'Customer',
+      last_name: req.user.name?.split(' ')[1] || 'User',
+      tx_ref: txRef,
+      callback_url: process.env.NODE_ENV === 'production' 
+        ? 'https://bookcompass-backend.onrender.com/api/order/payment-callback' 
+        : 'http://localhost:5000/api/order/payment-callback',
+      return_url: process.env.NODE_ENV === 'production' 
+        ? `https://bookcompass-backend.onrender.com/api/order/payment-success?tx_ref=${txRef}` 
+        : `http://localhost:5000/api/order/payment-success?tx_ref=${txRef}`,
+      "customization[title]": "Book Order Payment",
+      "customization[description]": `Payment for order #${order._id}`,
+    };
 
-    cart.totalPrice = Number(cart.totalPrice.toFixed(2)); // Ensure two decimal places
-    await cart.save();
+    const response = await axios.post(CHAPA_API_URL, paymentData, {
+      headers: {
+        Authorization: `Bearer ${CHAPA_SECRET_KEY}`,
+        'Content-Type': 'application/json',
+      },
+    });
 
-    // Update the stock of books in the selected items
-    for (const item of selectedItems) {
-      await Book.findByIdAndUpdate(item.book._id, { $inc: { stock: -item.quantity } });
+    if (response.data.status === 'success') {
+      // Remove items from cart only after successful payment initialization
+      cart.items = cart.items.filter((item) => !itemsId.includes(item.book._id.toString()));
+      cart.totalPrice = cart.items.reduce((total, item) => 
+        item.book && typeof item.book.price === 'number' ? total + item.quantity * item.book.price : total, 
+        0
+      );
+      cart.totalPrice = Number(cart.totalPrice.toFixed(2));
+      await cart.save();
+
+      return res.status(200).json({
+        order,
+        checkoutUrl: response.data.data.checkout_url,
+        txRef,
+      });
     }
-
-    return res.status(200).json(order);
   } catch (error) {
     console.error("Error creating order:", error);
     res.status(400).json({ error: error.message });
   }
 };
 
+// Verify payment after callback
+const verifyPayment = async (req, res) => {
+  try {const paymentSuccess = async (req, res) => {
+  try {
+    const { tx_ref } = req.query;
+    if (!tx_ref) {
+      return res.status(400).json({ message: 'Transaction reference (tx_ref) is missing' });
+    }
+
+    // Fetch the order from the database
+    const order = await Order.findOne({ txRef: tx_ref })
+      .populate('items.book')  // Populate book details
+      .populate('items.seller');  // Populate seller details
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // Optionally verify with Chapa (if you want real-time data instead of stored transactionDetails)
+    const verifyUrl = `https://api.chapa.co/v1/transaction/verify/${tx_ref}`;
+    const response = await axios.get(verifyUrl, {
+      headers: {
+        Authorization: `Bearer ${CHAPA_SECRET_KEY}`,
+      },
+    });
+
+    if (response.data.status === 'success' && response.data.data.status === 'success') {
+      res.status(200).json({
+        message: 'Payment successful! Thank you for your purchase.',
+        transactionDetails: order.transactionDetails || response.data.data,  // Use stored or fresh data
+        items: order.items.map(item => ({
+          bookTitle: item.book.title,  // From populated book
+          price: item.price,
+          quantity: item.quantity,
+          sellerName: item.seller.name,  // From populated seller (assumes User has name field)
+        })),
+      });
+    } else {
+      res.status(400).json({ message: 'Payment not completed' });
+    }
+  } catch (error) {
+    console.error("Error in paymentSuccess:", error.response ? error.response.data : error);
+    res.status(500).json({ error: 'Error retrieving transaction details' });
+  }
+};
+    const { tx_ref } = req.query;
+    console.log('Received tx_ref:', tx_ref);
+
+    if (!tx_ref) {
+      return res.status(400).json({ message: 'Transaction reference (tx_ref) is missing' });
+    }
+
+    const verifyUrl = `https://api.chapa.co/v1/transaction/verify/${tx_ref}`;
+    const response = await axios.get(verifyUrl, {
+      headers: {
+        Authorization: `Bearer ${CHAPA_SECRET_KEY}`,
+      },
+    });
+
+    const order = await Order.findOne({ txRef: tx_ref });
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (response.data.status === 'success' && response.data.data.status === 'success') {
+      console.log('Transaction Details:', response.data.data);
+      order.paymentStatus = 'paid';
+      order.orderStatus = 'processing';
+      order.transactionDetails = response.data.data; // Store details
+      await order.save();
+
+      for (const item of order.items) {
+        await Book.findByIdAndUpdate(item.book, { $inc: { stock: -item.quantity } });
+      }
+      // Redirect with tx_ref
+      res.redirect(`/api/order/payment-success?tx_ref=${tx_ref}`);
+    } else {
+      order.paymentStatus = 'failed';
+      await order.save();
+      res.status(400).json({ message: 'Payment verification failed' });
+    }
+  } catch (error) {
+    console.error("Error verifying payment:", error.response ? error.response.data : error);
+    res.status(500).json({ error: 'Error verifying payment' });
+  }
+};
+
+// Payment success handler
+const paymentSuccess = async (req, res) => {
+  try {
+    const { tx_ref } = req.query;
+    if (!tx_ref) {
+      return res.status(400).json({ message: 'Transaction reference (tx_ref) is missing' });
+    }
+
+    // Fetch the order from the database
+    const order = await Order.findOne({ txRef: tx_ref })
+      .populate('items.book')  // Populate book details
+      .populate('items.seller');  // Populate seller details
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // Optionally verify with Chapa (if you want real-time data instead of stored transactionDetails)
+    const verifyUrl = `https://api.chapa.co/v1/transaction/verify/${tx_ref}`;
+    const response = await axios.get(verifyUrl, {
+      headers: {
+        Authorization: `Bearer ${CHAPA_SECRET_KEY}`,
+      },
+    });
+
+    if (response.data.status === 'success' && response.data.data.status === 'success') {
+      res.status(200).json({
+        message: 'Payment successful! Thank you for your purchase.',
+        transactionDetails: order.transactionDetails || response.data.data,  // Use stored or fresh data
+        items: order.items.map(item => ({
+          bookTitle: item.book.title,  // From populated book
+          price: item.price,
+          quantity: item.quantity,
+          sellerName: item.seller.name,  // From populated seller (assumes User has name field)
+        })),
+      });
+    } else {
+      res.status(400).json({ message: 'Payment not completed' });
+    }
+  } catch (error) {
+    console.error("Error in paymentSuccess:", error.response ? error.response.data : error);
+    res.status(500).json({ error: 'Error retrieving transaction details' });
+  }
+};
 
 
 
@@ -276,4 +448,14 @@ const sellerId = req.user.id
     }
   }
 
-  module.exports = {createOrder , getOrder , getSingleOrder , updateOrderStatus , deleteOrder , cancelOrder , getOrderReports }
+module.exports = {
+    createOrder,
+    getOrder,
+    getSingleOrder,
+    updateOrderStatus,
+    deleteOrder,
+    cancelOrder,
+    getOrderReports,
+    verifyPayment,
+    paymentSuccess,
+  };

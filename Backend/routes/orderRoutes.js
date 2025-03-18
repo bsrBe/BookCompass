@@ -7,7 +7,9 @@ const {
   updateOrderStatus, 
   deleteOrder, 
   cancelOrder, 
-  getOrderReports 
+  getOrderReports,
+  verifyPayment,
+  paymentSuccess,
 } = require("../controllers/orderController");
 
 const { protect, checkSellerRole } = require("../middlewares/authMiddleware"); // Assuming auth middleware exists
@@ -32,5 +34,11 @@ router.delete("/deleteOrder/:id", protect, checkSellerRole , deleteOrder);
 
 // Get order reports (Admin access)
 router.get("/reports", protect, checkSellerRole, getOrderReports);
+
+// Payment callback from Chapa
+router.get("/payment-callback", verifyPayment);
+
+// Payment success page
+router.get("/payment-success", paymentSuccess);
 
 module.exports = router;
