@@ -35,7 +35,13 @@ const userSchema = new mongoose.Schema({
             enum : ["seller" , "buyer"],
             default : "buyer"
         },
-
+        location: {
+          address: String,  
+          coordinates: {  
+            lat: Number,
+            lng: Number
+          }
+        },
         profileImageUrl: {
             type: String, // Field type: String
             required: true, // Field is optional
