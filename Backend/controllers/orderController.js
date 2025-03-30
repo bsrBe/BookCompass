@@ -97,8 +97,6 @@ const getDistance = async (point1, point2) => {
 
 const createOrder = async (req, res) => {
   try {
-    console.log("Incoming Request Body:", req.body);
-    
     const { shippingAddress, itemsId } = req.body;
     const userId = req.user.id;
 
@@ -107,111 +105,222 @@ const createOrder = async (req, res) => {
       return res.status(400).json({ message: "No items selected" });
     }
 
-    // Fetch books
-    const books = await Book.find({ _id: { $in: itemsId } });
+    // Fetch books with properly populated seller data
+    const books = await Book.find({ _id: { $in: itemsId } })
+      .populate({
+        path: 'seller',
+        select: 'name email location',
+        transform: (doc) => {
+          // Transform the seller data to ensure consistent location format
+          if (doc.location && doc.location.coordinates) {
+            return {
+              ...doc.toObject(),
+              location: {
+                address: doc.location.address,
+                coordinates: {
+                  lat: parseFloat(doc.location.coordinates.lat),
+                  lng: parseFloat(doc.location.coordinates.lng)
+                }
+              }
+            };
+          }
+          return doc;
+        }
+      });
+      
+      console.log('Populated books:', JSON.stringify(books, null, 2));
+
     if (books.length !== itemsId.length) {
       return res.status(400).json({ message: 'Some items not found' });
     }
+ // Fetch user's cart
 
-    // Fetch user's cart
-    const cart = await Cart.findOne({ user: userId }).populate('items.book');
-    if (!cart) {
-      return res.status(404).json({ message: "Cart not found for this user" });
-    }
+ const cart = await Cart.findOne({ user: userId }).populate({
+  path: 'items.book',
+  populate: {
+    path: 'seller',
+    select: 'name email location'
+  }
+});
+ if (!cart) {
+   return res.status(404).json({ message: "Cart not found for this user" });
+ }
 
-    // Filter selected items from cart
-    const selectedItems = cart.items.filter(item =>
-      itemsId.includes(item.book._id.toString())
-    );
-    if (selectedItems.length === 0) {
-      return res.status(400).json({ message: "No valid items selected from the cart" });
-    }
+ // Filter selected items from cart
+ const selectedItems = cart.items.filter(item =>
+   itemsId.includes(item.book._id.toString())
+ );
+ if (selectedItems.length === 0) {
+   return res.status(400).json({ message: "No valid items selected from the cart" });
+ }
 
-    // Check for existing order with same user and items
-    const existingOrder = await Order.findOne({
-      user: userId,
-      'items.book': { $all: itemsId },
-      paymentStatus: { $in: ['pending', 'completed'] },
-    }).populate('items.book');
+ // Check for existing order
+ const existingOrder = await Order.findOne({
+   user: userId,
+   'items.book': { $all: itemsId },
+   paymentStatus: { $in: ['pending', 'completed'] },
+ }).populate('items.book');
 
-    if (existingOrder) {
-      const existingItemsMap = new Map(existingOrder.items.map(item => [item.book._id.toString(), item.quantity]));
-      const isRedundant = selectedItems.every(newItem => {
-        const existingQuantity = existingItemsMap.get(newItem.book._id.toString());
-        return existingQuantity !== undefined && existingQuantity === newItem.quantity;
-      });
+ if (existingOrder) {
+   const existingItemsMap = new Map(existingOrder.items.map(item => 
+     [item.book._id.toString(), item.quantity]
+   ));
+   const isRedundant = selectedItems.every(newItem => {
+     const existingQuantity = existingItemsMap.get(newItem.book._id.toString());
+     return existingQuantity === newItem.quantity;
+   });
 
-      if (isRedundant) {
-        return res.status(400).json({ 
-          message: "This order has already been placed with the same items and quantities.",
-          existingOrderId: existingOrder._id
+   if (isRedundant) {
+     return res.status(400).json({ 
+       message: "This order has already been placed",
+       existingOrderId: existingOrder._id
+     });
+   }
+ }
+
+
+
+    // Group items by seller with enhanced location handling
+    const sellerGroups = new Map();
+
+    selectedItems.forEach((item) => {
+      const sellerId = item.book.seller._id.toString();
+      if (!sellerGroups.has(sellerId)) {
+        const hasValidLocation = (
+          item.book.seller.location &&
+          item.book.seller.location.coordinates &&
+          typeof item.book.seller.location.coordinates.lat === 'number' &&
+          typeof item.book.seller.location.coordinates.lng === 'number'
+        );
+        console.log(`Seller ${sellerId} data:`, JSON.stringify(item.book.seller, null, 2));
+        sellerGroups.set(sellerId, {
+          seller: item.book.seller,
+          items: [],
+          subtotal: 0,
+          hasValidLocation,
+          sellerLocation: hasValidLocation ? {
+            lat: item.book.seller.location.coordinates.lat,
+            lng: item.book.seller.location.coordinates.lng
+          } : null
         });
       }
-    }
+      
+      const sellerGroup = sellerGroups.get(sellerId);
+      const orderItem = {
+        book: item.book._id,
+        quantity: item.quantity,
+        price: item.book.price,
+        seller: sellerId,
+      };
+      
+      sellerGroup.items.push(orderItem);
+      sellerGroup.subtotal += orderItem.price * orderItem.quantity;
+    });
 
-    // Create order items
-    const orderItems = selectedItems.map((item) => ({
-      book: item.book._id,
-      quantity: item.quantity,
-      price: item.book.price,
-      seller: item.book.seller,
-    }));
-
-    // Calculate delivery fee (assuming a base location in Addis Ababa)
-    const BASE_LOCATION = { lat: 9.005401, lng: 38.763611 }; // Addis Ababa center
-    let deliveryFee = 0;
+    // Process each seller group with improved error handling
+    const sellerGroupsArray = Array.from(sellerGroups.values());
+    let shippingCoords = [38.7636, 9.0054]; // Default to Addis center
     
     try {
-      const destination = await geocodeAddress(shippingAddress);
-      const distance = await getDistance(BASE_LOCATION, destination);
-      
-      // Calculate delivery fee based on distance (example: 10 ETB per km)
-      deliveryFee = distance * 40;
-      // Set minimum and maximum delivery fees
-      deliveryFee = Math.max(50, Math.min(deliveryFee, 10000)); // Min 50 ETB, Max 500 ETB
-deliveryFee = Math.round(deliveryFee * 100) / 100; // Round to 2 decimal places
-    } catch (error) {
-      console.error("Error calculating delivery fee:", error);
-      // Use default fee if calculation fails
-      deliveryFee = 100;
+      const geocoded = await geocodeAddress(shippingAddress);
+      if (geocoded.coordinates) {
+        shippingCoords = [geocoded.coordinates.lng, geocoded.coordinates.lat];
+      }
+    } catch (geocodeError) {
+      console.error("Geocoding failed:", geocodeError.message);
     }
 
-    const subtotal = orderItems.reduce((total, item) => total + item.price * item.quantity, 0);
-    const totalPrice = subtotal + deliveryFee;
-    const txRef = `order-${userId}-${Date.now()}`;
+    await Promise.all(sellerGroupsArray.map(async (group) => {
+      try {
+        if (!group.hasValidLocation || !group.sellerLocation) {
+          throw new Error("Seller location not properly formatted");
+        }
 
-    // Create the order
+        // Calculate distance and delivery fee
+        const distance = await getDistance(group.sellerLocation, { lat: shippingCoords[1], lng: shippingCoords[0] });
+        group.deliveryFee = Math.max(50, Math.min(distance * 10, 500));
+        group.distance = distance;
+        group.total = group.subtotal + group.deliveryFee;
+        
+        // Store location data for order document
+        group.fromLocation = {
+          type: 'Point',
+          coordinates: [
+            group.sellerLocation.lng,
+            group.sellerLocation.lat
+          ]
+        };
+        
+      } catch (error) {
+        console.error(`Delivery calculation for seller ${group.seller._id}:`, error.message);
+        // Default values with more context
+        group.deliveryFee = 100;
+        group.distance = null;
+        group.total = group.subtotal + 100;
+        group.fromLocation = {
+          type: 'Point',
+          coordinates: [38.7636, 9.0054],
+          note: 'Default location used'
+        };
+        group.locationError = error.message;
+      }
+    }));
+
+    // Create the order document with enhanced debugging info
+    const allOrderItems = sellerGroupsArray.flatMap(group => group.items);
     const order = new Order({
       user: userId,
       cart: cart._id,
-      items: orderItems,
-      subtotal,
-      deliveryFee,
-      totalPrice,
+      items: allOrderItems,
+      pricing: {
+        subtotal: sellerGroupsArray.reduce((sum, g) => sum + g.subtotal, 0),
+        deliveryFee: sellerGroupsArray.reduce((sum, g) => sum + g.deliveryFee, 0),
+        total: sellerGroupsArray.reduce((sum, g) => sum + g.total, 0),
+        sellerBreakdown: sellerGroupsArray.map(group => ({
+          seller: group.seller._id,
+          subtotal: group.subtotal,
+          deliveryFee: group.deliveryFee,
+          total: group.total,
+          distance: group.distance,
+          fromLocation: group.fromLocation,
+          toLocation: {
+            type: 'Point',
+            coordinates: shippingCoords
+          },
+          ...(group.locationError ? { locationError: group.locationError } : {})
+        }))
+      },
       shippingAddress,
+      shippingLocation: {
+        type: 'Point',
+        coordinates: shippingCoords,
+        ...(shippingCoords[0] === 38.7636 && shippingCoords[1] === 9.0054 ? { note: 'Default location used' } : {})
+      },
       paymentStatus: 'pending',
-      txRef,
+      txRef: `order-${userId}-${Date.now()}`
     });
-     // Create the order with clear fee breakdown
+
     await order.save();
-    // Chapa payment data
+
+    // Prepare payment data
     const paymentData = {
-      amount: totalPrice.toString(),
+      amount: order.pricing.total.toString(),
       currency: 'ETB',
       email: req.user.email || 'customer@example.com',
       first_name: req.user.name?.split(' ')[0] || 'Customer',
       last_name: req.user.name?.split(' ')[1] || 'User',
-      tx_ref: txRef,
+      tx_ref: order.txRef,
       callback_url: process.env.NODE_ENV === 'production' 
-        ? 'https://bookcompass-backend.onrender.com/api/order/payment-callback' 
+        ? 'https://your-production-url.com/api/order/payment-callback' 
         : 'http://localhost:5000/api/order/payment-callback',
       return_url: process.env.NODE_ENV === 'production' 
-        ? `https://bookcompass-backend.onrender.com/api/order/payment-success?tx_ref=${txRef}` 
-        : `http://localhost:5000/api/order/payment-success?tx_ref=${txRef}`,
+        ? `https://your-production-url.com/api/order/payment-success?tx_ref=${order.txRef}` 
+        : `http://localhost:5000/api/order/payment-success?tx_ref=${order.txRef}`,
       "customization[title]": "Book Order Payment",
       "customization[description]": `Payment for order #${order._id}`,
     };
 
+    // Initiate payment
     const response = await axios.post(CHAPA_API_URL, paymentData, {
       headers: {
         Authorization: `Bearer ${CHAPA_SECRET_KEY}`,
@@ -220,23 +329,28 @@ deliveryFee = Math.round(deliveryFee * 100) / 100; // Round to 2 decimal places
     });
 
     if (response.data.status === 'success') {
+      // Update cart by removing ordered items
       cart.items = cart.items.filter((item) => !itemsId.includes(item.book._id.toString()));
       cart.totalPrice = cart.items.reduce((total, item) => 
-        item.book && typeof item.book.price === 'number' ? total + item.quantity * item.book.price : total, 
+        item.book?.price ? total + (item.quantity * item.book.price) : total, 
         0
       );
-      cart.totalPrice = Number(cart.totalPrice.toFixed(2));
       await cart.save();
 
       return res.status(200).json({
         order,
         checkoutUrl: response.data.data.checkout_url,
-        txRef,
+        txRef: order.txRef,
       });
+    } else {
+      throw new Error('Payment initiation failed');
     }
   } catch (error) {
-    console.error("Error creating order:", error);
-    res.status(400).json({ error: error.message });
+    console.error("Order creation failed:", error);
+    res.status(400).json({ 
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
 
