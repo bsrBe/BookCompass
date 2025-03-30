@@ -3,18 +3,26 @@ const jwt = require("jsonwebtoken")
 const sendEmail = require("../utils/sendEmail")
 const crypto = require("crypto"); 
 
-const register = async (req ,res , next) => {
+const register = async (req ,res) => {
 
-    const {name , email , password ,  role , profileImageUrl} = req.body
+    const {name , email , password ,  role , profileImageUrl ,location} = req.body
+    const existingUser = await User.findOne({ email });
+    
     try {
-        const user =await  User.create({name , email , password,  role , profileImageUrl})
-       
+        if (existingUser) {
+            return res.status(400).json({ message: 'User already exists' });
+          }
+          if (role === 'seller' && (!location || !location.address)) {
+              return res.status(400).json({ message: 'Location address is required for sellers' });
+            }
+        const user =await  User.create({name , email , password,  role , profileImageUrl ,location: role === 'seller' ? { address: location.address } : undefined,});
+
             sendTokenResponse(user , 200 , res)
         
     } catch (error) {
         return res.status(500).json({message : error.message})
     }
-next()
+
 }
 
 const Login = async (req , res ,next) => {

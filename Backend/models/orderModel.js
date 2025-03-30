@@ -49,9 +49,11 @@ const orderSchema = new mongoose.Schema(
       type: String,
       unique: true,
     },
+    deliveryFee: { type: Number, default: 0 },
     transactionDetails: { type: Object },
     shippingAddress: { type: String, required: true },
   },
+  
   { timestamps: true }
 );
 

@@ -2,11 +2,98 @@ const mongoose = require('mongoose')
 const Order = require("../models/orderModel")
 const Cart = require("../models/cartModel")
 const Book = require("../models/bookModel")
+const User = require("../models/userModel")
 const axios = require("axios")
 require('dotenv').config();
 const CHAPA_SECRET_KEY = process.env.CHAPA_SECRET_KEY;
 const CHAPA_API_URL = 'https://api.chapa.co/v1/transaction/initialize';
 const CHAPA_VERIFY_URL = 'https://api.chapa.co/v1/transaction/verify/';
+
+const geocodeAddress = async (address) => {
+  try {
+    // 1. Clean and prepare the address
+    const cleanedAddress = address
+      .replace(/,+/g, ', ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    // 2. Special cases for Ethiopian locations commonly misgeocoded
+    const ETHIOPIAN_LOCATIONS = {
+      'mexico': { lat: 9.001442, lng: 38.6771697 }, // Mexico Square, Addis Ababa
+      'mexico, addis ababa': { lat: 9.001442, lng: 38.6771697 },
+      'bole': { lat: 8.9806, lng: 38.7998 }, // Bole, Addis Ababa
+      'piassa': { lat: 9.0300, lng: 38.7500 } // Piazza, Addis Ababa
+    };
+
+    const normalizedAddress = cleanedAddress.toLowerCase();
+    if (ETHIOPIAN_LOCATIONS[normalizedAddress]) {
+      return ETHIOPIAN_LOCATIONS[normalizedAddress];
+    }
+
+    // 3. Force Ethiopia context in search
+    const ethiopiaQuery = cleanedAddress.includes("Ethiopia") 
+      ? cleanedAddress 
+      : `${cleanedAddress}, Ethiopia`;
+
+    const response = await axios.get(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(ethiopiaQuery)}&countrycodes=et&limit=1`
+    );
+
+    // 4. Validate the result is in Ethiopia
+    if (response.data?.length > 0) {
+      const result = response.data[0];
+      const lat = parseFloat(result.lat);
+      const lon = parseFloat(result.lon);
+
+      // Ethiopia bounding box check
+      if (lat >= 3.4 && lat <= 14.9 && lon >= 33.0 && lon <= 48.0) {
+        return { lat, lng: lon };
+      }
+    }
+
+    // 5. Fallback to component search if full address fails
+    const components = cleanedAddress.split(',').map(c => c.trim());
+    for (let i = 0; i < components.length; i++) {
+      const partialQuery = `${components.slice(i).join(', ')}, Ethiopia`;
+      const fallbackResponse = await axios.get(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(partialQuery)}&countrycodes=et&limit=1`
+      );
+
+      if (fallbackResponse.data?.length > 0) {
+        const result = fallbackResponse.data[0];
+        const lat = parseFloat(result.lat);
+        const lon = parseFloat(result.lon);
+        
+        if (lat >= 3.4 && lat <= 14.9 && lon >= 33.0 && lon <= 48.0) {
+          return { lat, lng: lon };
+        }
+      }
+    }
+
+    throw new Error('Address not found in Ethiopia');
+    
+  } catch (error) {
+    console.error('Geocoding error:', error);
+    throw new Error(`Could not locate "${address}" in Ethiopia. Please try format: "Neighborhood, City, Ethiopia"`);
+  }
+};
+const getDistance = async (point1, point2) => {
+  try {
+    // Use free OSRM service
+    const response = await axios.get(
+      `http://router.project-osrm.org/route/v1/driving/${point1.lng},${point1.lat};${point2.lng},${point2.lat}?overview=false`
+    );
+    
+    if (!response.data.routes?.[0]) {
+      throw new Error('No route found');
+    }
+    
+    return response.data.routes[0].distance / 1000; // Convert to km
+  } catch (error) {
+    console.error('Distance calculation error:', error);
+    throw new Error('Failed to calculate distance');
+  }
+};
 
 const createOrder = async (req, res) => {
   try {
@@ -40,11 +127,11 @@ const createOrder = async (req, res) => {
       return res.status(400).json({ message: "No valid items selected from the cart" });
     }
 
-    // Check for existing order with same user and items (regardless of cart state)
+    // Check for existing order with same user and items
     const existingOrder = await Order.findOne({
       user: userId,
-      'items.book': { $all: itemsId },  // Matches all book IDs
-      paymentStatus: { $in: ['pending', 'completed'] },  // Consider only active orders
+      'items.book': { $all: itemsId },
+      paymentStatus: { $in: ['pending', 'completed'] },
     }).populate('items.book');
 
     if (existingOrder) {
@@ -70,7 +157,27 @@ const createOrder = async (req, res) => {
       seller: item.book.seller,
     }));
 
-    const totalPrice = orderItems.reduce((total, item) => total + item.price * item.quantity, 0);
+    // Calculate delivery fee (assuming a base location in Addis Ababa)
+    const BASE_LOCATION = { lat: 9.005401, lng: 38.763611 }; // Addis Ababa center
+    let deliveryFee = 0;
+    
+    try {
+      const destination = await geocodeAddress(shippingAddress);
+      const distance = await getDistance(BASE_LOCATION, destination);
+      
+      // Calculate delivery fee based on distance (example: 10 ETB per km)
+      deliveryFee = distance * 40;
+      // Set minimum and maximum delivery fees
+      deliveryFee = Math.max(50, Math.min(deliveryFee, 10000)); // Min 50 ETB, Max 500 ETB
+deliveryFee = Math.round(deliveryFee * 100) / 100; // Round to 2 decimal places
+    } catch (error) {
+      console.error("Error calculating delivery fee:", error);
+      // Use default fee if calculation fails
+      deliveryFee = 100;
+    }
+
+    const subtotal = orderItems.reduce((total, item) => total + item.price * item.quantity, 0);
+    const totalPrice = subtotal + deliveryFee;
     const txRef = `order-${userId}-${Date.now()}`;
 
     // Create the order
@@ -78,13 +185,15 @@ const createOrder = async (req, res) => {
       user: userId,
       cart: cart._id,
       items: orderItems,
+      subtotal,
+      deliveryFee,
       totalPrice,
       shippingAddress,
       paymentStatus: 'pending',
       txRef,
     });
+     // Create the order with clear fee breakdown
     await order.save();
-
     // Chapa payment data
     const paymentData = {
       amount: totalPrice.toString(),
@@ -111,7 +220,6 @@ const createOrder = async (req, res) => {
     });
 
     if (response.data.status === 'success') {
-      // Remove items from cart only after successful payment initialization
       cart.items = cart.items.filter((item) => !itemsId.includes(item.book._id.toString()));
       cart.totalPrice = cart.items.reduce((total, item) => 
         item.book && typeof item.book.price === 'number' ? total + item.quantity * item.book.price : total, 
@@ -253,6 +361,9 @@ const paymentSuccess = async (req, res) => {
           price: item.price,
           quantity: item.quantity,
           sellerName: item.seller.name,  // From populated seller (assumes User has name field)
+          deliveryFee: order.deliveryFee,
+          subtotal: order.totalPrice - order.deliveryFee, // Items cost
+         totalPrice: order.totalPrice,
         })),
       });
     } else {
