@@ -303,6 +303,22 @@ const createOrder = async (req, res) => {
     await order.save();
 
     // Prepare payment data
+    // const paymentData = {
+    //   amount: order.pricing.total.toString(),
+    //   currency: 'ETB',
+    //   email: req.user.email || 'customer@example.com',
+    //   first_name: req.user.name?.split(' ')[0] || 'Customer',
+    //   last_name: req.user.name?.split(' ')[1] || 'User',
+    //   tx_ref: order.txRef,
+    //   callback_url: process.env.NODE_ENV === 'production' 
+    //     ? 'https://your-production-url.com/api/order/payment-callback' 
+    //     : 'http://localhost:5000/api/order/payment-callback',
+    //   return_url: process.env.NODE_ENV === 'production' 
+    //     ? `https://your-production-url.com/api/order/payment-success?tx_ref=${order.txRef}` 
+    //     : `http://localhost:5000/api/order/payment-success?tx_ref=${order.txRef}`,
+    //   "customization[title]": "Book Order Payment",
+    //   "customization[description]": `Payment for order #${order._id}`,
+    // };
     const paymentData = {
       amount: order.pricing.total.toString(),
       currency: 'ETB',
@@ -311,8 +327,8 @@ const createOrder = async (req, res) => {
       last_name: req.user.name?.split(' ')[1] || 'User',
       tx_ref: order.txRef,
       callback_url: process.env.NODE_ENV === 'production' 
-        ? 'https://your-production-url.com/api/order/payment-callback' 
-        : 'http://localhost:5000/api/order/payment-callback',
+        ? `https://your-production-url.com/api/order/payment-callback?tx_ref=${order.txRef}` 
+        : `http://localhost:5000/api/order/payment-callback?tx_ref=${order.txRef}`,
       return_url: process.env.NODE_ENV === 'production' 
         ? `https://your-production-url.com/api/order/payment-success?tx_ref=${order.txRef}` 
         : `http://localhost:5000/api/order/payment-success?tx_ref=${order.txRef}`,
@@ -354,7 +370,47 @@ const createOrder = async (req, res) => {
   }
 };
 
-// Verify payment after callback
+
+
+// const verifyPayment = async (req, res) => {
+//   try {
+//     const tx_ref = req.query.tx_ref || req.body.tx_ref;
+//     console.log('Received tx_ref:', tx_ref);
+//     if (!tx_ref) {
+//       return res.status(400).json({ message: 'Transaction reference (tx_ref) is missing' });
+//     }
+
+//     const verifyUrl = `https://api.chapa.co/v1/transaction/verify/${tx_ref}`;
+//     const response = await axios.get(verifyUrl, {
+//       headers: { Authorization: `Bearer ${CHAPA_SECRET_KEY}` },
+//     });
+
+//     const order = await Order.findOne({ txRef: tx_ref });
+//     if (!order) {
+//       return res.status(404).json({ message: 'Order not found' });
+//     }
+
+//     if (response.data.status === 'success' && response.data.data.status === 'success') {
+//       order.paymentStatus = 'paid';
+//       order.orderStatus = 'processing';
+//       order.transactionDetails = response.data.data;
+//       await order.save();
+//       for (const item of order.items) {
+//         await Book.findByIdAndUpdate(item.book, { $inc: { stock: -item.quantity } });
+//       }
+//       res.redirect(`/api/order/payment-success?tx_ref=${tx_ref}`);
+//     } else {
+//       order.paymentStatus = 'failed';
+//       await order.save();
+//       res.status(400).json({ message: 'Payment verification failed' });
+//     }
+//   } catch (error) {
+//     console.error("Error verifying payment:", error.response ? error.response.data : error);
+//     res.status(500).json({ error: 'Error verifying payment' });
+//   }
+// };
+
+// Payment success handler
 const verifyPayment = async (req, res) => {
   try {const paymentSuccess = async (req, res) => {
   try {
@@ -441,7 +497,9 @@ const verifyPayment = async (req, res) => {
   }
 };
 
-// Payment success handler
+
+
+
 const paymentSuccess = async (req, res) => {
   try {
     const { tx_ref } = req.query;
@@ -488,8 +546,6 @@ const paymentSuccess = async (req, res) => {
     res.status(500).json({ error: 'Error retrieving transaction details' });
   }
 };
-
-
 
 const getOrder = async (req, res) => {
   const isSeller = req.user.role === "seller";
