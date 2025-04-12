@@ -13,7 +13,7 @@ const {
 } = require("../controllers/orderController");
 
 const { protect, checkSellerRole } = require("../middlewares/authMiddleware"); // Assuming auth middleware exists
-
+const { streamDigitalBook } = require("../utils/streamDigitalBook");
 // Create an order (Only for authenticated users)
 router.post("/createOrder", protect, createOrder);
 
@@ -40,5 +40,8 @@ router.get("/payment-callback", verifyPayment);
 
 // Payment success page
 router.get("/payment-success", paymentSuccess);
+
+// Stream digital book (Only for users who have purchased it)
+router.get("/stream/:bookId", protect, streamDigitalBook);
 
 module.exports = router;

@@ -10,9 +10,15 @@ const booksRoutes = require("./routes/bookRoutes")
 const cartRoutes = require("./routes/cartRoutes")
 const orderRoutes = require("./routes/orderRoutes")
 const reviewRoutes = require("./routes/reviewRoutes");
+// const opn = require('opn');
+const path = require("path"); 
 
 require("dotenv").config({path:'/config/.env'});
 app.use(cors())
+// app.use(cors({
+//   origin: ['http://localhost:3000', 'https://bookcompass.onrender.com'],
+//   credentials: true
+// }));
 // const allowedOrigins = ["http://localhost:5173", "http://localhost:4173", "http://localhost:5000" , "bookCompass.html"];
 
 // app.use(
@@ -27,7 +33,11 @@ app.use(cors())
 //     credentials: true,
 //   })
 // );
-app.use(express.static(__dirname));  // Serve files from the current directory
+
+// app.use(express.static(__dirname));
+// app.get('/', (req, res) => {
+//   res.sendFile(path.join(__dirname, 'test.html'));
+// });
 const swaggerDocument = YAML.load("./swagger.yaml");
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
   swaggerOptions: {
@@ -47,6 +57,8 @@ app.use("/api/order" , orderRoutes);
 app.use("/api/books", reviewRoutes)
 connectDB();
 
+
 app.listen(5000, () => {
   console.log("server listening on Port",process.env.PORT||5000);
+    // opn(`http://localhost:5000`);
 });

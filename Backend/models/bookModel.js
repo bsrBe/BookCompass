@@ -6,7 +6,7 @@ const bookSchema = new mongoose.Schema(
     author: { type: String, required: true },
     description: { type: String },
     price: { type: Number, required: true },
-    stock: { type: Number, default: 1 },
+    stock: { type: Number, default: function() { return this.isDigital ? null : 1; } },
     category: {
       type: String,
       required: true,
@@ -34,6 +34,11 @@ const bookSchema = new mongoose.Schema(
       unique: true,
       trim: true,
     },
+    isDigital : {
+      type: Boolean,
+      default: false,
+    },
+    fileUrl: { type: String, required: function() { return this.isDigital; } },
     averageRating: { type: Number, default: 0 },
     numReviews: { type: Number, default: 0 },
   },

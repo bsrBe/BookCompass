@@ -139,7 +139,7 @@ const orderSchema = new mongoose.Schema(
       unique: true,
     },
     transactionDetails: { type: Object },
-    shippingAddress: { type: String, required: true },
+    shippingAddress: { type: String},
     shippingLocation: { // geocoded customer location
       type: {
         type: String,
