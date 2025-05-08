@@ -6,9 +6,8 @@ const crypto = require("crypto");
 const register = async (req ,res) => {
 
     const {name , email , password ,  role , profileImageUrl ,location} = req.body
-    const existingUser = await User.findOne({ email });
-    
     try {
+        const existingUser = await User.findOne({ email });
         if (existingUser) {
             return res.status(400).json({ message: 'User already exists' });
           }
@@ -16,7 +15,22 @@ const register = async (req ,res) => {
               return res.status(400).json({ message: 'Location address is required for sellers' });
             }
         const user =await  User.create({name , email , password,  role , profileImageUrl ,location: role === 'seller' ? { address: location.address } : undefined,});
+        if (!user.isEmailConfirmed) {
+            // Generate confirmation token
+            const confirmationToken = user.generateEmailConfirmationToken();
+            await user.save({ validateBeforeSave: false });
 
+            const confirmUrl = `${req.protocol}://${req.get("host")}/api/auth/confirmEmail/${confirmationToken}`;
+            const message = `Click the link to confirm your email: <a href="${confirmUrl}">Verify Email</a>`;
+
+            await sendEmail({
+                email: user.email,
+                subject: "Email Confirmation",
+                message
+            });
+
+            return res.status(403).json({ msg: "Please verify your email. Confirmation link sent.Don't Forget to check your spam folder" });
+        }
             sendTokenResponse(user , 200 , res)
         
     } catch (error) {
@@ -42,22 +56,7 @@ const Login = async (req , res ,next) => {
             return res.status(404).json({msg : "invalid credentials"})
         }
 
-        if (!user.isEmailConfirmed) {
-            // Generate confirmation token
-            const confirmationToken = user.generateEmailConfirmationToken();
-            await user.save({ validateBeforeSave: false });
-
-            const confirmUrl = `${req.protocol}://${req.get("host")}/auth/confirm-email/${confirmationToken}`;
-            const message = `Click the link to confirm your email: <a href="${confirmUrl}">Verify Email</a>`;
-
-            await sendEmail({
-                email: user.email,
-                subject: "Email Confirmation",
-                message
-            });
-
-            return res.status(403).json({ msg: "Please verify your email. Confirmation link sent." });
-        }
+        
 
         sendTokenResponse(user , 200 ,res)
 
@@ -185,46 +184,61 @@ const resetPassword = async (req, res) => {
 
 
 const confirmEmail = async (req, res) => {
+    console.log("authController.js: confirmEmail function invoked."); // Added for debugging
     const { token } = req.params;
+    console.log("authController.js: Token from params:", token); // Added for debugging
 
    
     if (!token) {
-        console.error("No token provided");
+        console.error("authController.js: No token provided in params."); // Updated log
         return res.status(400).json({ msg: "No token provided" });
     }
 
+    console.log("authController.js: EMAIL_VERIFICATION_SECRET:", process.env.EMAIL_VERIFICATION_SECRET); // Added for debugging
+
     try {
-        
+        console.log("authController.js: Attempting to decode token."); // Added for debugging
         const decoded = jwt.decode(token, { complete: true });
    
 
         if (!decoded) {
-            console.error("Token could not be decoded.");
+            console.error("authController.js: Token could not be decoded."); // Updated log
             return res.status(400).json({ msg: "Invalid token format" });
         }
+        console.log("authController.js: Token decoded (without verification):", decoded.payload); // Added for debugging
 
         // Now verify the token
+        console.log("authController.js: Attempting to verify token."); // Added for debugging
         const verifiedDecoded = jwt.verify(token, process.env.EMAIL_VERIFICATION_SECRET);
+        console.log("authController.js: Token verified successfully. Decoded payload:", verifiedDecoded); // Added for debugging
         
 
         const user = await User.findOne({ email: verifiedDecoded.email });
 
         if (!user) {
-            console.log("User not found for email:", verifiedDecoded.email);
+            console.log("authController.js: User not found for email:", verifiedDecoded.email); // Updated log
             return res.status(400).json({ msg: "Invalid token or user not found" });
         }
+        console.log("authController.js: User found:", user.email); // Added for debugging
 
         // Mark email as confirmed
         user.isEmailConfirmed = true;
-        user.confirmationToken = undefined;
+        user.confirmationToken = undefined; // Clear the confirmation token
+        console.log("authController.js: Attempting to save user with confirmed email."); // Added for debugging
         await user.save();
+        console.log("authController.js: User saved successfully."); // Added for debugging
 
       
         res.status(200).json({ msg: "Email confirmed successfully. You can now log in." });
 
     } catch (error) {
-        console.error("Error verifying token:", error.message);
-        return res.status(400).json({ msg: "Invalid or expired token" });
+        console.error("authController.js: Error verifying token:", error.message, error.stack); // Updated log, added stack
+        if (error.name === 'JsonWebTokenError') {
+            return res.status(400).json({ msg: "Invalid token signature or structure." });
+        } else if (error.name === 'TokenExpiredError') {
+            return res.status(400).json({ msg: "Token has expired." });
+        }
+        return res.status(500).json({ msg: "Error processing email confirmation.", error: error.message }); // More generic server error
     }
 };
 

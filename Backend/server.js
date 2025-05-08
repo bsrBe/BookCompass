@@ -12,9 +12,19 @@ const orderRoutes = require("./routes/orderRoutes")
 const reviewRoutes = require("./routes/reviewRoutes");
 // const opn = require('opn');
 const path = require("path"); 
+app.use(cors({
+  origin: ['http://localhost:8080', 'http://localhost:5173', 'https://bookcompass.onrender.com'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
 
-require("dotenv").config({path:'/config/.env'});
-app.use(cors())
+app.options('*', cors()); // Handle preflight OPTIONS requests
+
+
+app.use(express.json());
+require("dotenv").config(); // Corrected: Assumes .env is in the Backend directory
+console.log("EMAIL_VERIFICATION_SECRET from server.js:", process.env.EMAIL_VERIFICATION_SECRET); // Added for debugging
 // app.use(cors({
 //   origin: ['http://localhost:3000', 'https://bookcompass.onrender.com'],
 //   credentials: true
@@ -46,7 +56,7 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
 }));
 
 app.use(cookieParser());
-app.use(express.json());
+
 
 
 
@@ -54,7 +64,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/books" ,booksRoutes);
 app.use("/api/cart" , cartRoutes);
 app.use("/api/order" , orderRoutes);
-app.use("/api/books", reviewRoutes)
+app.use("/api/reviews", reviewRoutes); 
 connectDB();
 
 

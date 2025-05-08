@@ -1,5 +1,6 @@
 const express = require("express")
 const router = express.Router()
+console.log("authRoutes.js: Router instance created."); // Added for debugging
 const {protect} = require("../middlewares/authMiddleware")
 const cookieParser = require("cookie-parser");
 
@@ -19,5 +20,8 @@ router.post("/register" , register)
 router.post("/login" , Login)
 router.post("/forgotPassword" ,protect,  forgotPassword)
 router.put("/resetPassword/:token", protect ,resetPassword)
-router.get("/confirmEmail/:token", confirmEmail);
+router.get("/confirmEmail/:token", (req, res, next) => { // Added wrapper for debugging
+    console.log(`authRoutes.js: Received request for /confirmEmail/${req.params.token}`); // Added for debugging
+    confirmEmail(req, res, next);
+});
 module.exports = router
