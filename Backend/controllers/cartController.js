@@ -37,7 +37,11 @@ const getCart = async ( req ,res ) => {
         // Add a new item to the cart
         cart.items.push({ book: bookId, quantity : Number(quantity) });
       }
-      cart = await cart.populate("items.book")
+      
+      cart = await cart.populate({
+  path: "items.book",
+  select: "-fileUrl"
+});
       cart.items = cart.items.filter(item => item.book && item.book.price);
       cart.totalPrice = cart.items.reduce((total, item) => total + item.quantity * item.book.price, 0);
       await cart.save();

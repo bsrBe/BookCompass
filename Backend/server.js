@@ -57,9 +57,6 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
 
 app.use(cookieParser());
 
-
-
-
 app.use("/api/auth", authRoutes);
 app.use("/api/books" ,booksRoutes);
 app.use("/api/cart" , cartRoutes);
@@ -70,5 +67,4 @@ connectDB();
 
 app.listen(5000, () => {
   console.log("server listening on Port",process.env.PORT||5000);
-    // opn(`http://localhost:5000`);
 });

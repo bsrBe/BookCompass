@@ -33,9 +33,9 @@ const uploadFile = (buffer, options = {}) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       { 
         ...options,
-        metadata: {
-          "content-type": "application/pdf",
-        },
+        // metadata: {
+        //   "content-type": "application/pdf",
+        // },
       },
       (error, result) => {
         if (error) reject(error);

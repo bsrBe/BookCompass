@@ -275,11 +275,11 @@ const createOrder = async (req, res) => {
       tx_ref: order.txRef,
       callback_url:
         // process.env.NODE_ENV === "production"
-           `https://your-production-url.com/api/order/payment-callback?tx_ref=${order.txRef}`,
+           `https://bookcompass.onrender.com/api/order/payment-callback?tx_ref=${order.txRef}`,
           // : `http://localhost:5000/api/order/payment-callback?tx_ref=${order.txRef}`,
       return_url:
         // process.env.NODE_ENV === "production"
-           `https://your-production-url.com/api/order/payment-success?tx_ref=${order.txRef}`,
+           `https://bookcompass.onrender.com/api/order/payment-success?tx_ref=${order.txRef}`,
           // : `http://localhost:5000/api/order/payment-success?tx_ref=${order.txRef}`,
       "customization[title]": "Book Order Payment",
       "customization[description]": `Payment for order #${order._id}`,
