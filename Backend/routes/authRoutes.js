@@ -18,8 +18,8 @@ const  {
 router.get("/me" , protect ,getMe)
 router.post("/register" , register)
 router.post("/login" , Login)
-router.post("/forgotPassword" ,protect,  forgotPassword)
-router.put("/resetPassword/:token", protect ,resetPassword)
+router.post("/forgotPassword" ,forgotPassword)
+router.put("/resetPassword/:token",resetPassword)
 router.get("/confirmEmail/:token", (req, res, next) => { // Added wrapper for debugging
     console.log(`authRoutes.js: Received request for /confirmEmail/${req.params.token}`); // Added for debugging
     confirmEmail(req, res, next);
