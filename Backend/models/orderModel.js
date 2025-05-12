@@ -81,7 +81,7 @@ const orderSchema = new mongoose.Schema(
         },
         book: {
           type: mongoose.Schema.Types.ObjectId,
-          ref: "bookModel",
+          ref: "Book",
           required: true,
         },
         quantity: {
@@ -139,6 +139,27 @@ const orderSchema = new mongoose.Schema(
       unique: true,
     },
     transactionDetails: { type: Object },
+    cancelledAt: {
+  type: Date,
+  default: null,
+},
+cancellationReason: {
+  type: String,
+  default: null,
+},
+refundStatus: {
+  type: String,
+  enum: ["none", "initiated", "failed", "completed"],
+  default: "none",
+},
+refundReference: {
+  type: String,
+  default: null,
+},
+refundDetails: {
+  type: Object,
+  default: null,
+},
     shippingAddress: { type: String},
     shippingLocation: { // geocoded customer location
       type: {

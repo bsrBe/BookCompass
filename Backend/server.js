@@ -5,11 +5,14 @@ const connectDB = require("./config/db")
 const app = express()
 const swaggerUi = require('swagger-ui-express')
 const YAML = require("yamljs");
+const maintenanceMiddleware = require("./middlewares/maintenanceMiddleware"); // Import maintenance middleware
 const authRoutes = require("./routes/authRoutes")
 const booksRoutes = require("./routes/bookRoutes")
 const cartRoutes = require("./routes/cartRoutes")
 const orderRoutes = require("./routes/orderRoutes")
 const reviewRoutes = require("./routes/reviewRoutes");
+const adminRoutes = require("./routes/adminRoutes");
+const webhookRoutes = require("./routes/webhookRoutes");
 // const opn = require('opn');
 const path = require("path"); 
 app.use(cors({
@@ -57,11 +60,17 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
 
 app.use(cookieParser());
 
+// Apply maintenance mode check globally before API routes
+app.use(maintenanceMiddleware);
+
 app.use("/api/auth", authRoutes);
+app.use("/api/admin", adminRoutes);
 app.use("/api/books" ,booksRoutes);
 app.use("/api/cart" , cartRoutes);
 app.use("/api/order" , orderRoutes);
-app.use("/api/reviews", reviewRoutes); 
+app.use("/api/reviews", reviewRoutes);
+app.use("/api/webhook", webhookRoutes);
+
 connectDB();
 
 

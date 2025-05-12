@@ -17,7 +17,6 @@ const getCart = async ( req ,res ) => {
   const addToCart = async (req, res) => {
     try {
       const { bookId, quantity } = req.body;
-
       if (!bookId || quantity <= 0) {
         return res.status(400).json({ message: "Invalid book ID or quantity" });
     }
@@ -36,8 +35,7 @@ const getCart = async ( req ,res ) => {
       } else {
         // Add a new item to the cart
         cart.items.push({ book: bookId, quantity : Number(quantity) });
-      }
-      
+      }  
       cart = await cart.populate({
   path: "items.book",
   select: "-fileUrl"

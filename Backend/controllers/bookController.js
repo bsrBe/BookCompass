@@ -314,32 +314,48 @@ const createBook = async (req, res) => {
       category,
       isbn,
       isDigital,
+      isAudiobook,
     } = req.body;
 
     const isDigitalBook = isDigital === "true" || isDigital === true;
+    const isAudiobookBook = isAudiobook === "true" || isAudiobook === true;
 
     if (!title || !author || !price || !category || !isbn) {
       return res.status(400).json({ error: "Missing required fields" });
     }
-
+     if (isDigitalBook && isAudiobookBook) {
+      return res.status(400).json({ error: "A book cannot be both digital and audiobook" });
+    }
     let imageUrl = "https://via.placeholder.com/150";
     let fileUrl = null;
 
-    if (isDigitalBook) {
+     if (isDigitalBook || isAudiobookBook) {
       if (!req.files || !req.files.file) {
-        return res.status(400).json({ error: "No digital file provided for digital book" });
-      }
+        return res.status(400).json({ error: "No file provided for digital book or audiobook" });
+      }    
 
-      const digitalFile = req.files.file[0];
-      fileUrl = await uploadFile(digitalFile.buffer, {
-        resource_type: "raw",
-        folder: "digital_books",
+      //  const digitalFile = req.files.file[0];
+      // fileUrl = await uploadFile(digitalFile.buffer, {
+      //   resource_type: "raw",
+      //   folder: "digital_books",
+      // });
+
+      // if (req.files && req.files.image) {
+      //   const imageFile = req.files.image[0];
+      //   imageUrl = await uploadImage(imageFile.buffer);
+      // }
+
+       const file = req.files.file[0];
+      fileUrl = await uploadFile(file.buffer, {
+        resource_type: isAudiobookBook ? "video" : "raw", // Use 'video' for audio files
+        folder: isAudiobookBook ? "audiobooks" : "digital_books",
       });
 
       if (req.files && req.files.image) {
         const imageFile = req.files.image[0];
         imageUrl = await uploadImage(imageFile.buffer);
       }
+
     } else {
       if (!stock || isNaN(stock) || parseInt(stock) < 0) {
         return res.status(400).json({ error: "Stock is required for physical books and must be a non-negative number" });
@@ -356,13 +372,14 @@ const createBook = async (req, res) => {
       author,
       description,
       price: parseFloat(price),
-      stock: isDigitalBook ? null : parseInt(stock),
+      stock:  isDigitalBook || isAudiobookBook ? null : parseInt(stock),
       category,
       imageUrl,
       seller: sellerId,
       isbn,
       isDigital: isDigitalBook,
-      fileUrl: isDigitalBook ? fileUrl : undefined,
+      isAudiobook: isAudiobookBook,
+      fileUrl: isDigitalBook || isAudiobookBook ? fileUrl : undefined,
     });
 
     return res.status(201).json({ success: true, data: newBook });
@@ -393,19 +410,42 @@ const updateBook = async (req, res) => {
       category,
       isbn,
       isDigital,
+      isAudiobook,
     } = req.body;
 
     const isDigitalBook = isDigital === "true" || isDigital === true;
+      const isAudiobookBook = isAudiobook === "true" || isAudiobook === true;
+
+    if (isDigitalBook && isAudiobookBook) {
+      return res.status(400).json({ error: "A book cannot be both digital and audiobook" });
+    }
 
     let imageUrl = book.imageUrl;
     let fileUrl = book.fileUrl;
 
-    if (isDigitalBook) {
+    // if (isDigitalBook) {
+    //   if (req.files && req.files.file) {
+    //     const digitalFile = req.files.file[0];
+    //     fileUrl = await uploadFile(digitalFile.buffer, {
+    //       resource_type: "raw",
+    //       folder: "digital_books",
+    //     });
+    //   }
+    //   if (req.files && req.files.image) {
+    //     if (imageUrl && !imageUrl.includes("via.placeholder.com")) {
+    //       const publicId = imageUrl.split("/").pop().split(".")[0];
+    //       await cloudinary.uploader.destroy(`product_images/${publicId}`);
+    //     }
+    //     const imageFile = req.files.image[0];
+    //     imageUrl = await uploadImage(imageFile.buffer);
+    //   }
+
+     if (isDigitalBook || isAudiobookBook) {
       if (req.files && req.files.file) {
-        const digitalFile = req.files.file[0];
-        fileUrl = await uploadFile(digitalFile.buffer, {
-          resource_type: "raw",
-          folder: "digital_books",
+        const file = req.files.file[0];
+        fileUrl = await uploadFile(file.buffer, {
+          resource_type: isAudiobookBook ? "video" : "raw",
+          folder: isAudiobookBook ? "audiobooks" : "digital_books",
         });
       }
       if (req.files && req.files.image) {
@@ -416,6 +456,7 @@ const updateBook = async (req, res) => {
         const imageFile = req.files.image[0];
         imageUrl = await uploadImage(imageFile.buffer);
       }
+
     } else {
       if (stock && (isNaN(stock) || parseInt(stock) < 0)) {
         return res.status(400).json({ error: "Stock must be a non-negative number" });
@@ -438,12 +479,14 @@ const updateBook = async (req, res) => {
         author,
         description,
         price: price ? parseFloat(price) : book.price,
-        stock: isDigitalBook ? null : (stock || book.stock),
+         stock: isDigitalBook || isAudiobookBook ? null : (stock || book.stock),
         category,
         imageUrl,
         isbn,
         isDigital: isDigitalBook,
-        fileUrl: isDigitalBook ? fileUrl : undefined,
+        isAudiobook: isAudiobookBook,
+        fileUrl: isDigitalBook || isAudiobookBook ? fileUrl : undefined,
+
       },
       { new: true, runValidators: true }
     );
@@ -462,8 +505,8 @@ const updateBook = async (req, res) => {
 const getDigitalBooks = async (req, res) => {
   try {
     const { search, category, minPrice, maxPrice, sort } = req.query;
-    let query = { isDigital: true }; // Only digital books
-
+    // let query = { isDigital: true }; // Only digital books
+let query = { isDigital: true, isAudiobook: false };
     if (search) {
       query.title = { $regex: search, $options: "i" };
     }
@@ -530,6 +573,56 @@ const getPhysicalBooks = async (req, res) => {
 
     let books = await Book.find(query)
       .select("-fileUrl") // Exclude fileUrl (though not applicable for physical books, for consistency)
+      .sort({ createdAt: -1 });
+
+    books = await Promise.all(
+      books.map(async (book) => {
+        const reviews = await Review.find({ book: book._id })
+          .select("comment user rating")
+          .populate({
+            path: "user",
+            select: "name -_id",
+          });
+        return {
+          ...book.toObject(),
+          reviews,
+        };
+      })
+    );
+
+    if (sort === "price-asc") {
+      books = await Book.find(query).select("-fileUrl").sort({ price: 1 });
+    } else if (sort === "price-desc") {
+      books = await Book.find(query).select("-fileUrl").sort({ price: -1 });
+    }
+
+    res.status(200).json(books);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const getAudiobooks = async (req, res) => {
+  try {
+    const { search, category, minPrice, maxPrice, sort } = req.query;
+    let query = { isAudiobook: true };
+
+    if (search) {
+      query.title = { $regex: search, $options: "i" };
+    }
+
+    if (category) {
+      query.category = category;
+    }
+
+    if (minPrice || maxPrice) {
+      query.price = {};
+      if (minPrice) query.price.$gte = Number(minPrice);
+      if (maxPrice) query.price.$lte = Number(maxPrice);
+    }
+
+    let books = await Book.find(query)
+      .select("-fileUrl")
       .sort({ createdAt: -1 });
 
     books = await Promise.all(

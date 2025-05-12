@@ -56,6 +56,9 @@ const Login = async (req , res ,next) => {
             return res.status(404).json({msg : "invalid credentials"})
         }
 
+        if (!user.isEmailConfirmed) {
+            return res.status(403).json({ msg: "Please first verify your email. Confirmation link is sent upon registration. Don't forget to check your spam folder." });  
+        }
         
 
         sendTokenResponse(user , 200 ,res)
@@ -221,6 +224,42 @@ const confirmEmail = async (req, res) => {
     }
 };
 
+const inviteAdmin = async (req, res) => {
+    const { name, email } = req.body;
+  
+    try {
+      const existingUser = await User.findOne({ email });
+      if (existingUser) {
+        return res.status(400).json({ msg: "User already exists" });
+      }
+  
+      // Create the user without password
+      const user = await User.create({
+        name,
+        email,
+        role: "Admin",
+        password: "Temporary@123", // required field, will be overwritten later
+      });
+  
+      // Generate reset token
+      const resetToken = user.getResetPasswordToken();
+      await user.save({ validateBeforeSave: false });
+  
+      const inviteUrl = `${req.protocol}://${req.get("host")}/api/auth/resetPassword/${resetToken}`;
+      const message = `You've been invited as an Admin. Set your password using this link: <a href="${inviteUrl}">Set Password</a>`;
+
+
+      await sendEmail({
+        email: user.email,
+        subject: "Admin Invitation",
+        message,
+      });
+  
+      res.status(200).json({ msg: "Invitation sent to Admin email" });
+    } catch (err) {
+      res.status(500).json({ msg: err.message });
+    }
+  };
 
 module.exports = {
     register,
@@ -228,5 +267,6 @@ module.exports = {
     getMe,
     forgotPassword,
     resetPassword,
-    confirmEmail
+    confirmEmail,
+    inviteAdmin
 }
