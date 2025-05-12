@@ -479,7 +479,7 @@ const updateBook = async (req, res) => {
         author,
         description,
         price: price ? parseFloat(price) : book.price,
-         stock: isDigitalBook || isAudiobookBook ? null : (stock || book.stock),
+        stock: isDigitalBook || isAudiobookBook ? null : (stock || book.stock),
         category,
         imageUrl,
         isbn,
@@ -734,6 +734,7 @@ const deleteBook = async (req, res) => {
 module.exports = {
   getDigitalBooks, // New endpoint
   getPhysicalBooks, // New endpoint
+  getAudiobooks,
   getSingleBook,
   fetchMyBooks,
   createBook,

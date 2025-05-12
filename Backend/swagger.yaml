@@ -423,7 +423,7 @@ paths:
           content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
 
   # Book Routes
-  /api/books:
+  /api/books/createBook:
     post:
       tags: [Books]
       summary: Create a new book (seller only)

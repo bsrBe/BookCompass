@@ -10,12 +10,14 @@ const {
   fetchMyBooks,
   createBook,
   updateBook,
+  getAudiobooks,
   deleteBook,
 } = require("../controllers/bookController");
 
 // New routes for browsing digital and physical books separately
 router.get("/getDigitalBooks", getDigitalBooks);
 router.get("/getPhysicalBooks", getPhysicalBooks);
+router.get("/audiobooks", getAudiobooks);
 router.get("/singleBook/:id", getSingleBook);
 router.get("/getBook/myBooks", protect, checkSellerRole, fetchMyBooks);
 router.post(
