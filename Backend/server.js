@@ -16,7 +16,7 @@ const webhookRoutes = require("./routes/webhookRoutes");
 // const opn = require('opn');
 const path = require("path"); 
 app.use(cors({
-  origin: ['http://localhost:8080', 'http://localhost:5173', 'https://bookcompass.onrender.com'],
+  origin: ['http://localhost:8080', 'http://localhost:5173', 'http://localhost:3000' ,'https://bookcompass.onrender.com'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
@@ -27,7 +27,6 @@ app.options('*', cors()); // Handle preflight OPTIONS requests
 
 app.use(express.json());
 require("dotenv").config(); // Corrected: Assumes .env is in the Backend directory
-console.log("EMAIL_VERIFICATION_SECRET from server.js:", process.env.EMAIL_VERIFICATION_SECRET); // Added for debugging
 // app.use(cors({
 //   origin: ['http://localhost:3000', 'https://bookcompass.onrender.com'],
 //   credentials: true
