@@ -67,10 +67,10 @@ const fileFilter = (req, file, cb) => {
       cb(new Error("Invalid image type. Only JPG, PNG, GIF are allowed"), false);
     }
   } else if (file.fieldname === "file") {
-    if (isDigital && digitalTypes.includes(fileExtension)) {
+    if (digitalTypes.includes(fileExtension)) {
       cb(null, true);
     } else {
-      cb(new Error("Invalid file type for digital book. Allowed types: PDF, EPUB, MP3"), false);
+      cb(new Error("Invalid file type for digital or audio book. Allowed types: PDF, EPUB, MP3"), false);
     }
   } else {
     cb(new Error("Unknown field name"), false);
