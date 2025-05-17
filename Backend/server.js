@@ -13,6 +13,7 @@ const orderRoutes = require("./routes/orderRoutes")
 const reviewRoutes = require("./routes/reviewRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const webhookRoutes = require("./routes/webhookRoutes");
+const userRoutes = require("./routes/userRoutes");
 // const opn = require('opn');
 const path = require("path"); 
 app.use(cors({
@@ -69,6 +70,7 @@ app.use("/api/cart" , cartRoutes);
 app.use("/api/order" , orderRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/webhook", webhookRoutes);
+app.use('/api/user', userRoutes);
 
 connectDB();
 
