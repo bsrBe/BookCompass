@@ -66,6 +66,25 @@ const extractCoordinatesFromGoogleMapsUrl = async (url) => {
 
 const geocodeAddress = async (address) => {
     try {
+        // Check if the input is a Google Maps URL
+        if (address.startsWith('http') && (
+            address.includes('google.com/maps') || 
+            address.includes('maps.google.com') || 
+            address.includes('maps.app.goo.gl')
+        )) {
+            const coordinates = await extractCoordinatesFromGoogleMapsUrl(address);
+            if (coordinates) {
+                // Validate that the coordinates are within Ethiopia
+                if (coordinates.lat >= 3.4 && coordinates.lat <= 14.9 && 
+                    coordinates.lng >= 33.0 && coordinates.lng <= 48.0) {
+                    return coordinates;
+                } else {
+                    throw new Error("The provided location is outside of Ethiopia");
+                }
+            }
+            // If coordinates couldn't be extracted, fall through to address geocoding
+        }
+
         const cleanedAddress = address
             .replace(/,+/g, ", ")
             .replace(/\s+/g, " ")
@@ -122,8 +141,11 @@ const geocodeAddress = async (address) => {
         throw new Error("Address not found in Ethiopia");
     } catch (error) {
         console.error("Geocoding error:", error);
-        throw new Error(`Could not locate "${address}" in Ethiopia. Please try format: "Neighborhood, City, Ethiopia"`);
+        throw new Error(`Could not locate "${address}" in Ethiopia. Please try format: "Neighborhood, City, Ethiopia" or provide a Google Maps URL`);
     }
 };
 
-module.exports = { geocodeAddress };
+module.exports = {
+    geocodeAddress,
+    extractCoordinatesFromGoogleMapsUrl
+};
