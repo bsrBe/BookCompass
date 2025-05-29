@@ -6,7 +6,7 @@ info:
 servers:
   - url: http://localhost:5000
     description: Local development server
-  - url: bookcompass.onrender.com
+  - url: https://bookcompass.onrender.com
     description: Production server
 components:
   securitySchemes:
