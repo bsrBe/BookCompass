@@ -1,72 +1,3 @@
-// const mongoose = require("mongoose");
-
-// const bookSchema = new mongoose.Schema(
-//   {
-//     title: { type: String, required: true },
-//     author: { type: String, required: true },
-//     description: { type: String },
-//     price: { type: Number, required: true },
-//     stock: { type: Number, default: function() { return this.isDigital ? null : 1; } },
-//     category: {
-//       type: String,
-//       required: true,
-//       enum: [
-//         "Fiction",
-//         "Non-Fiction",
-//         "Science",
-//         "History",
-//         "Biography",
-//         "Other",
-//       ],
-//     },
-//     imageUrl: {
-//       type: String,
-//       default: "https://via.placeholder.com/150",
-//     },
-//     seller: {
-//       type: mongoose.Schema.Types.ObjectId,
-//       ref: "User",
-//       required: true,
-//     },
-//     isbn: {
-//       type: String,
-//       required: true,
-//       unique: true,
-//       trim: true,
-//     },
-//     isDigital : {
-//       type: Boolean,
-//       default: false,
-//     },
-//     fileUrl: { type: String, required: function() { return this.isDigital; } },
-//     averageRating: { type: Number, default: 0 },
-//     numReviews: { type: Number, default: 0 },
-//   },
-//   { timestamps: true }
-// );
-
-// module.exports = mongoose.model("bookModel", bookSchema);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 const mongoose = require("mongoose");
 
 const bookSchema = new mongoose.Schema(
@@ -109,14 +40,25 @@ const bookSchema = new mongoose.Schema(
       required: [true, "Please add a category"],
       enum: [
         "Fiction",
-        "Non-Fiction",
-        "Science",
-        "History",
-        "Biography",
-        "Children",
-        "Fantasy",
         "Mystery",
         "Romance",
+        "Science Fiction",
+        "Fantasy",
+        "Horror",
+        "Thriller",
+        "Historical Fiction",
+        "Biography",
+        "Self-Help",
+        "Business",
+        "Science",
+        "Philosophy",
+        "Poetry",
+        "Children",
+        "Young Adult",
+        "Travel",
+        "Cooking",
+        "Art",
+        "History",
         "Other",
       ],
     },
@@ -127,6 +69,11 @@ const bookSchema = new mongoose.Schema(
     seller: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
+      required: true,
+    },
+    shop: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "BookShop",
       required: true,
     },
     isbn: {
@@ -165,5 +112,23 @@ const bookSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Middleware to update BookShop's availableBooks array
+bookSchema.post('save', async function () {
+  const BookShop = mongoose.model('BookShop');
+  await BookShop.findByIdAndUpdate(
+    this.shop,
+    { $addToSet: { availableBooks: this._id } }
+  );
+});
+
+// Middleware to remove book from BookShop's availableBooks array when deleted
+bookSchema.post('remove', async function () {
+  const BookShop = mongoose.model('BookShop');
+  await BookShop.findByIdAndUpdate(
+    this.shop,
+    { $pull: { availableBooks: this._id } }
+  );
+});
 
 module.exports = mongoose.model("Book", bookSchema);

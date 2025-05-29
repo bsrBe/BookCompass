@@ -1,7 +1,9 @@
 // routes/bookRoutes.js
 const express = require("express");
 const router = express.Router();
-const upload = require("../utils/multer");
+// const upload = require("../utils/multer");
+const { bookUpload } = require("../utils/multer");
+
 const { protect, checkSellerRole } = require("../middlewares/authMiddleware");
 const {
   getDigitalBooks,
@@ -12,6 +14,7 @@ const {
   updateBook,
   getAudiobooks,
   deleteBook,
+  getMostSoldBooks,
 } = require("../controllers/bookController");
 
 // New routes for browsing digital and physical books separately
@@ -24,7 +27,7 @@ router.post(
   "/createBook",
   protect,
   checkSellerRole,
-  upload.fields([
+bookUpload.fields([
     { name: "image", maxCount: 1 },
     { name: "file", maxCount: 1 },
   ]),
@@ -34,12 +37,13 @@ router.put(
   "/updateBook/:id",
   protect,
   checkSellerRole,
-  upload.fields([
+  bookUpload.fields([
     { name: "image", maxCount: 1 },
     { name: "file", maxCount: 1 },
   ]),
   updateBook
 );
 router.delete("/deleteBook/:id", protect, checkSellerRole, deleteBook);
-
+// Route for most sold books
+router.get("/most-sold", getMostSoldBooks);
 module.exports = router;

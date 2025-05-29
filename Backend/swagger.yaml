@@ -6,7 +6,7 @@ info:
 servers:
   - url: http://localhost:5000
     description: Local development server
-  - url: https://bookcompass.onrender.com
+  - url: https://bookapi-c2zu.onrender.com
     description: Production server
 components:
   securitySchemes:
@@ -14,6 +14,10 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: jwt
   schemas:
     User:
       type: object
@@ -294,15 +298,221 @@ components:
           example: false
         error:
           type: string
-          description: Error message
+        message:
+          type: string
       required:
         - success
         - error
+    Interaction:
+      type: object
+      properties:
+        _id:
+          type: string
+          description: Interaction ID
+        userId:
+          type: string
+          description: ID of the user
+        bookId:
+          type: string
+          description: ID of the book
+        type:
+          type: string
+          enum: [view, rating, timeSpent]
+          description: Type of interaction
+        rating:
+          type: number
+          minimum: 1
+          maximum: 5
+          description: Book rating (only for rating type)
+        duration:
+          type: number
+          minimum: 0
+          description: Time spent in seconds (only for timeSpent type)
+        timestamp:
+          type: string
+          format: date-time
+          description: When the interaction occurred
+    WishlistItem:
+      type: object
+      properties:
+        _id:
+          type: string
+        user:
+          type: string
+        book:
+          $ref: '#/components/schemas/Book'
+        status:
+          type: string
+          enum: [active, removed]
+        addedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    BookShop:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Name of the bookshop
+        tagline:
+          type: string
+          description: Short tagline for the bookshop
+        description:
+          type: string
+          description: Detailed description of the bookshop
+        services:
+          type: array
+          items:
+            type: string
+            enum: ["Café", "Reading Area", "Author Events", "Children's Corner", "Free Wi-Fi", "Book Club", "Other"]
+          description: List of services offered by the bookshop
+        contact:
+          type: object
+          properties:
+            phoneNumber:
+              type: string
+              description: Contact phone number
+            email:
+              type: string
+              format: email
+              description: Contact email address
+            website:
+              type: string
+              format: uri
+              description: Bookshop website URL
+        paymentOptions:
+          type: array
+          items:
+            type: object
+            properties:
+              provider:
+                type: string
+                enum: ["Telebirr", "CBE Birr", "Amole", "HelloCash", "E-Birr"]
+              phoneNumber:
+                type: string
+                pattern: '^\d{10}$'
+                description: 10-digit phone number for the payment service
+          description: List of payment options available at the bookshop
+        operatingHours:
+          type: object
+          properties:
+            monday:
+              type: string
+              default: "9:00 AM - 5:00 PM"
+            tuesday:
+              type: string
+              default: "9:00 AM - 5:00 PM"
+            wednesday:
+              type: string
+              default: "9:00 AM - 5:00 PM"
+            thursday:
+              type: string
+              default: "9:00 AM - 5:00 PM"
+            friday:
+              type: string
+              default: "9:00 AM - 5:00 PM"
+            saturday:
+              type: string
+              default: "10:00 AM - 4:00 PM"
+            sunday:
+              type: string
+              default: "Closed"
+        socialMedia:
+          type: object
+          properties:
+            facebook:
+              type: string
+              format: uri
+            instagram:
+              type: string
+              format: uri
+            twitter:
+              type: string
+              format: uri
+            other:
+              type: string
+              format: uri
+        upcomingEvents:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              date:
+                type: string
+                format: date
+              time:
+                type: string
+                pattern: '^([0-1]?[0-9]|2[0-3]):[0-5][0-9] (AM|PM)$'
+              description:
+                type: string
+        images:
+          type: object
+          properties:
+            logo:
+              type: string
+              format: uri
+            background:
+              type: string
+              format: uri
+        location:
+          type: object
+          properties:
+            type:
+              type: string
+              enum: ['Point']
+            coordinates:
+              type: array
+              items:
+                type: number
+              minItems: 2
+              maxItems: 2
+            address:
+              type: string
+        averageRating:
+          type: number
+          minimum: 0
+          maximum: 5
+        numReviews:
+          type: integer
+          minimum: 0
+
+    BookShopReview:
+      type: object
+      properties:
+        _id:
+          type: string
+        user:
+          type: string
+          description: ID of the reviewer
+        bookShop:
+          type: string
+          description: ID of the bookshop being reviewed
+        rating:
+          type: number
+          minimum: 1
+          maximum: 5
+        comment:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - user
+        - bookShop
+        - rating
+
 paths:
   /api/auth/me:
     get:
       summary: Get current user
-      tags: [Auth]
+      tags: [Authentication]
       security:
         - bearerAuth: []
       responses:
@@ -327,7 +537,7 @@ paths:
   /api/auth/register:
     post:
       summary: Register a new user
-      tags: [Auth]
+      tags: [Authentication]
       requestBody:
         required: true
         content:
@@ -379,7 +589,7 @@ paths:
   /api/auth/login:
     post:
       summary: Login user
-      tags: [Auth]
+      tags: [Authentication]
       requestBody:
         required: true
         content:
@@ -422,7 +632,7 @@ paths:
   /api/auth/forgotPassword:
     post:
       summary: Request password reset
-      tags: [Auth]
+      tags: [Authentication]
       requestBody:
         required: true
         content:
@@ -459,7 +669,7 @@ paths:
   /api/auth/resetPassword/{token}:
     put:
       summary: Reset password
-      tags: [Auth]
+      tags: [Authentication]
       parameters:
         - in: path
           name: token
@@ -504,7 +714,7 @@ paths:
   /api/auth/confirmEmail/{token}:
     get:
       summary: Confirm email address
-      tags: [Auth]
+      tags: [Authentication]
       parameters:
         - in: path
           name: token
@@ -535,7 +745,7 @@ paths:
   /api/auth/inviteAdmin:
     post:
       summary: Invite a new admin
-      tags: [Auth]
+      tags: [Admin Operations]
       security:
         - bearerAuth: []
       requestBody:
@@ -578,7 +788,7 @@ paths:
   /api/cart/getCart:
     get:
       summary: Get user's cart
-      tags: [Cart]
+      tags: [Cart & Wishlist]
       security:
         - bearerAuth: []
       responses:
@@ -609,7 +819,7 @@ paths:
   /api/cart/createCart:
     post:
       summary: Add item to cart
-      tags: [Cart]
+      tags: [Cart & Wishlist]
       security:
         - bearerAuth: []
       requestBody:
@@ -656,7 +866,7 @@ paths:
   /api/cart/updateCart/{id}:
     put:
       summary: Update cart item quantity
-      tags: [Cart]
+      tags: [Cart & Wishlist]
       security:
         - bearerAuth: []
       parameters:
@@ -706,7 +916,7 @@ paths:
   /api/cart/deleteCart/{id}:
     delete:
       summary: Remove item from cart
-      tags: [Cart]
+      tags: [Cart & Wishlist]
       security:
         - bearerAuth: []
       parameters:
@@ -738,7 +948,7 @@ paths:
   /api/admin/dashboard:
     get:
       summary: Get admin dashboard overview
-      tags: [Admin]
+      tags: [Admin Operations]
       security:
         - bearerAuth: []
       responses:
@@ -770,7 +980,7 @@ paths:
   /api/admin/users:
     get:
       summary: Get all users
-      tags: [Admin]
+      tags: [Admin Operations]
       security:
         - bearerAuth: []
       responses:
@@ -797,7 +1007,7 @@ paths:
   /api/admin/users/{id}:
     get:
       summary: Get a user by ID
-      tags: [Admin]
+      tags: [Admin Operations]
       security:
         - bearerAuth: []
       parameters:
@@ -834,7 +1044,7 @@ paths:
                 $ref: '#/components/schemas/Error'
     delete:
       summary: Delete a user
-      tags: [Admin]
+      tags: [Admin Operations]
       security:
         - bearerAuth: []
       parameters:
@@ -867,7 +1077,7 @@ paths:
   /api/admin/createUsers:
     post:
       summary: Create a new user
-      tags: [Admin]
+      tags: [Admin Operations]
       security:
         - bearerAuth: []
       requestBody:
@@ -918,7 +1128,7 @@ paths:
   /api/admin/users/{id}/block:
     put:
       summary: Block a user
-      tags: [Admin]
+      tags: [Admin Operations]
       security:
         - bearerAuth: []
       parameters:
@@ -950,7 +1160,7 @@ paths:
   /api/admin/users/{id}/unblock:
     put:
       summary: Unblock a user
-      tags: [Admin]
+      tags: [Admin Operations]
       security:
         - bearerAuth: []
       parameters:
@@ -982,7 +1192,7 @@ paths:
   /api/admin/products:
     get:
       summary: Get all products
-      tags: [Admin]
+      tags: [Admin Operations]
       security:
         - bearerAuth: []
       responses:
@@ -1009,7 +1219,7 @@ paths:
   /api/admin/newProducts:
     post:
       summary: Create a new product
-      tags: [Admin]
+      tags: [Admin Operations]
       security:
         - bearerAuth: []
       requestBody:
@@ -1080,7 +1290,18 @@ paths:
   /api/admin/products/{id}:
     put:
       summary: Update a product
-      tags: [Admin]
+      description: |
+        Update a product. Only the fields you provide will be updated.
+        All fields are optional - you can update just the fields you want to change.
+        
+        Example: To update just the price and stock:
+        ```json
+        {
+          "price": 29.99,
+          "stock": 100
+        }
+        ```
+      tags: [Admin Operations]
       security:
         - bearerAuth: []
       parameters:
@@ -1099,32 +1320,42 @@ paths:
               properties:
                 title:
                   type: string
+                  description: Book title
                 author:
                   type: string
+                  description: Book author
                 description:
                   type: string
+                  description: Book description
                 price:
                   type: number
+                  description: Book price
                 stock:
                   type: number
+                  description: Stock quantity for physical books
                 category:
                   type: string
                   enum: [Fiction, Non-Fiction, Science, History, Biography, Children, Fantasy, Mystery, Romance, Other]
+                  description: Book category
                 isbn:
                   type: string
+                  description: Book ISBN
                 isDigital:
                   type: boolean
+                  description: Whether the book is digital
                 isAudiobook:
                   type: boolean
+                  description: Whether the book is an audiobook
                 image:
                   type: string
                   format: binary
+                  description: Book cover image
                 file:
                   type: string
                   format: binary
       responses:
         '200':
-          description: Product updated
+          description: Product updated successfully
           content:
             application/json:
               schema:
@@ -1149,7 +1380,7 @@ paths:
                 $ref: '#/components/schemas/Error'
     delete:
       summary: Delete a product
-      tags: [Admin]
+      tags: [Admin Operations]
       security:
         - bearerAuth: []
       parameters:
@@ -1182,7 +1413,17 @@ paths:
   /api/admin/profile:
     put:
       summary: Update admin profile
-      tags: [Admin]
+      description: |
+        Update admin profile information. Only the fields you provide will be updated.
+        All fields are optional - you can update just the fields you want to change.
+        
+        Example: To update just the name:
+        ```json
+        {
+          "name": "New Admin Name"
+        }
+        ```
+      tags: [Admin Operations]
       security:
         - bearerAuth: []
       requestBody:
@@ -1194,14 +1435,14 @@ paths:
               properties:
                 name:
                   type: string
-                  example: Admin User
+                  description: Admin's full name
                 email:
                   type: string
                   format: email
-                  example: admin@example.com
+                  description: Admin's email address
       responses:
         '200':
-          description: Profile updated
+          description: Profile updated successfully
           content:
             application/json:
               schema:
@@ -1221,7 +1462,7 @@ paths:
   /api/admin/maintenance:
     put:
       summary: Toggle maintenance mode
-      tags: [Admin]
+      tags: [Admin Operations]
       security:
         - bearerAuth: []
       requestBody:
@@ -1258,22 +1499,43 @@ paths:
   /api/books/getDigitalBooks:
     get:
       summary: Get all digital books
-      tags: [Book]
+      description: Retrieve a list of all digital books with optional filtering
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Search term for book title
+        - in: query
+          name: category
+          schema:
+            type: string
+          description: Filter by book category
+        - in: query
+          name: minPrice
+          schema:
+            type: number
+          description: Minimum price filter
+        - in: query
+          name: maxPrice
+          schema:
+            type: number
+          description: Maximum price filter
+        - in: query
+          name: sort
+          schema:
+            type: string
+            enum: [price-asc, price-desc]
+          description: Sort order
       responses:
         '200':
           description: List of digital books
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: true
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Book'
+                type: array
+                items:
+                  $ref: '#/components/schemas/Book'
         '500':
           description: Server error
           content:
@@ -1283,22 +1545,43 @@ paths:
   /api/books/getPhysicalBooks:
     get:
       summary: Get all physical books
-      tags: [Book]
+      description: Retrieve a list of all physical books with optional filtering
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Search term for book title
+        - in: query
+          name: category
+          schema:
+            type: string
+          description: Filter by book category
+        - in: query
+          name: minPrice
+          schema:
+            type: number
+          description: Minimum price filter
+        - in: query
+          name: maxPrice
+          schema:
+            type: number
+          description: Maximum price filter
+        - in: query
+          name: sort
+          schema:
+            type: string
+            enum: [price-asc, price-desc]
+          description: Sort order
       responses:
         '200':
           description: List of physical books
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: true
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Book'
+                type: array
+                items:
+                  $ref: '#/components/schemas/Book'
         '500':
           description: Server error
           content:
@@ -1308,22 +1591,43 @@ paths:
   /api/books/audiobooks:
     get:
       summary: Get all audiobooks
-      tags: [Book]
+      description: Retrieve a list of all audiobooks with optional filtering
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Search term for book title
+        - in: query
+          name: category
+          schema:
+            type: string
+          description: Filter by book category
+        - in: query
+          name: minPrice
+          schema:
+            type: number
+          description: Minimum price filter
+        - in: query
+          name: maxPrice
+          schema:
+            type: number
+          description: Maximum price filter
+        - in: query
+          name: sort
+          schema:
+            type: string
+            enum: [price-asc, price-desc]
+          description: Sort order
       responses:
         '200':
           description: List of audiobooks
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: true
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Book'
+                type: array
+                items:
+                  $ref: '#/components/schemas/Book'
         '500':
           description: Server error
           content:
@@ -1333,7 +1637,7 @@ paths:
   /api/books/singleBook/{id}:
     get:
       summary: Get a single book by ID
-      tags: [Book]
+      tags: [Book Management]
       parameters:
         - in: path
           name: id
@@ -1363,7 +1667,7 @@ paths:
   /api/books/getBook/myBooks:
     get:
       summary: Get seller's books
-      tags: [Book]
+      tags: [Book Management]
       security:
         - bearerAuth: []
       responses:
@@ -1390,7 +1694,7 @@ paths:
   /api/books/createBook:
     post:
       summary: Create a new book
-      tags: [Book]
+      tags: [Book Management]
       security:
         - bearerAuth: []
       requestBody:
@@ -1467,7 +1771,18 @@ paths:
   /api/books/updateBook/{id}:
     put:
       summary: Update a book
-      tags: [Book]
+      description: |
+        Update a book's information. Only the fields you provide will be updated.
+        All fields are optional - you can update just the fields you want to change.
+        
+        Example: To update just the price and description:
+        ```json
+        {
+          "price": 24.99,
+          "description": "Updated book description"
+        }
+        ```
+      tags: [Book Management]
       security:
         - bearerAuth: []
       parameters:
@@ -1486,32 +1801,43 @@ paths:
               properties:
                 title:
                   type: string
+                  description: Book title
                 author:
                   type: string
+                  description: Book author
                 description:
                   type: string
+                  description: Book description
                 price:
                   type: number
+                  description: Book price
                 stock:
                   type: number
+                  description: Stock quantity for physical books
                 category:
                   type: string
                   enum: [Fiction, Non-Fiction, Science, History, Biography, Children, Fantasy, Mystery, Romance, Other]
+                  description: Book category
                 isbn:
                   type: string
+                  description: Book ISBN
                 isDigital:
                   type: boolean
+                  description: Whether the book is digital
                 isAudiobook:
                   type: boolean
+                  description: Whether the book is an audiobook
                 image:
                   type: string
                   format: binary
+                  description: Book cover image
                 file:
                   type: string
                   format: binary
+                  description: Digital book or audiobook file
       responses:
         '200':
-          description: Book updated
+          description: Book updated successfully
           content:
             application/json:
               schema:
@@ -1537,7 +1863,7 @@ paths:
   /api/books/deleteBook/{id}:
     delete:
       summary: Delete a book
-      tags: [Book]
+      tags: [Book Management]
       security:
         - bearerAuth: []
       parameters:
@@ -1576,7 +1902,7 @@ paths:
   /api/reviews/{bookId}/reviews:
     post:
       summary: Create a review for a book
-      tags: [Review]
+      tags: [Reviews & Ratings]
       security:
         - bearerAuth: []
       parameters:
@@ -1630,7 +1956,7 @@ paths:
                 $ref: '#/components/schemas/Error'
     get:
       summary: Get reviews for a book
-      tags: [Review]
+      tags: [Reviews & Ratings]
       parameters:
         - in: path
           name: bookId
@@ -1662,7 +1988,17 @@ paths:
   /api/reviews/{bookId}/reviews/{reviewId}:
     put:
       summary: Update a review
-      tags: [Review]
+      description: |
+        Update a book review. Only the fields you provide will be updated.
+        All fields are optional - you can update just the fields you want to change.
+        
+        Example: To update just the rating:
+        ```json
+        {
+          "rating": 4
+        }
+        ```
+      tags: [Reviews & Ratings]
       security:
         - bearerAuth: []
       parameters:
@@ -1689,13 +2025,13 @@ paths:
                   type: number
                   minimum: 1
                   maximum: 5
-                  example: 5
+                  description: Rating value (1-5)
                 comment:
                   type: string
-                  example: Updated review
+                  description: Review comment
       responses:
         '200':
-          description: Review updated
+          description: Review updated successfully
           content:
             application/json:
               schema:
@@ -1720,7 +2056,7 @@ paths:
                 $ref: '#/components/schemas/Error'
     delete:
       summary: Delete a review
-      tags: [Review]
+      tags: [Reviews & Ratings]
       security:
         - bearerAuth: []
       parameters:
@@ -1765,7 +2101,7 @@ paths:
   /api/order/createOrder:
     post:
       summary: Create a new order
-      tags: [Order]
+      tags: [Order & Payment]
       security:
         - bearerAuth: []
       requestBody:
@@ -1812,7 +2148,7 @@ paths:
   /api/order/getOrder:
     get:
       summary: Get user's or seller's orders
-      tags: [Order]
+      tags: [Order & Payment]
       security:
         - bearerAuth: []
       responses:
@@ -1839,7 +2175,7 @@ paths:
   /api/order/getOrder/{id}:
     get:
       summary: Get a single order by ID
-      tags: [Order]
+      tags: [Order & Payment]
       security:
         - bearerAuth: []
       parameters:
@@ -1877,7 +2213,7 @@ paths:
   /api/order/updateOrder/{id}/status:
     put:
       summary: Update order status
-      tags: [Order]
+      tags: [Order & Payment]
       security:
         - bearerAuth: []
       parameters:
@@ -1928,7 +2264,7 @@ paths:
   /api/order/updateStatus/{id}/cancel:
     put:
       summary: Cancel an order
-      tags: [Order]
+      tags: [Order & Payment]
       security:
         - bearerAuth: []
       parameters:
@@ -1978,7 +2314,7 @@ paths:
   /api/order/deleteOrder/{id}:
     delete:
       summary: Delete an order
-      tags: [Order]
+      tags: [Order & Payment]
       security:
         - bearerAuth: []
       parameters:
@@ -2017,7 +2353,7 @@ paths:
   /api/order/reports:
     get:
       summary: Get order reports
-      tags: [Order]
+      tags: [Order & Payment]
       security:
         - bearerAuth: []
       responses:
@@ -2044,10 +2380,47 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /api/order/verifyPayment:
+    get:
+      summary: Verify payment status
+      description: Verify the status of a payment transaction
+      tags: [Order & Payment]
+      parameters:
+        - in: query
+          name: tx_ref
+          required: true
+          schema:
+            type: string
+          description: Transaction reference from Chapa
+      responses:
+        '200':
+          description: Payment verification result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        enum: [success, pending, failed]
+                      message:
+                        type: string
+        '400':
+          description: Invalid transaction reference
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/order/payment-callback:
     get:
       summary: Handle payment callback from Chapa
-      tags: [Order]
+      tags: [Order & Payment]
       responses:
         '200':
           description: Payment callback processed
@@ -2065,10 +2438,18 @@ paths:
   /api/order/payment-success:
     get:
       summary: Payment success page
-      tags: [Order]
+      description: Handle successful payment redirect
+      tags: [Order & Payment]
+      parameters:
+        - in: query
+          name: tx_ref
+          required: true
+          schema:
+            type: string
+          description: Transaction reference
       responses:
         '200':
-          description: Payment success
+          description: Payment success page
           content:
             application/json:
               schema:
@@ -2080,10 +2461,18 @@ paths:
                   message:
                     type: string
                     example: Payment successful
+                  order:
+                    $ref: '#/components/schemas/Order'
+        '400':
+          description: Invalid transaction reference
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/order/stream/{bookId}:
     get:
-      summary: Stream a digital book
-      tags: [Order]
+      summary: Stream a digital book or audiobook
+      tags: [Order & Payment]
       security:
         - bearerAuth: []
       parameters:
@@ -2093,9 +2482,15 @@ paths:
           schema:
             type: string
           description: Book ID
+        - in: query
+          name: download
+          schema:
+            type: boolean
+            default: false
+          description: Whether to download the file instead of streaming
       responses:
         '200':
-          description: Streaming response
+          description: File stream
           content:
             application/octet-stream:
               schema:
@@ -2107,8 +2502,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '404':
-          description: Book not found
+        '403':
+          description: No access to this content
           content:
             application/json:
               schema:
@@ -2116,7 +2511,7 @@ paths:
   /api/user:
     post:
       summary: Create a new user
-      tags: [User]
+      tags: [User Management]
       requestBody:
         required: true
         content:
@@ -2164,7 +2559,7 @@ paths:
                 $ref: '#/components/schemas/Error'
     get:
       summary: Get all users
-      tags: [User]
+      tags: [User Management]
       responses:
         '200':
           description: List of users
@@ -2189,7 +2584,7 @@ paths:
   /api/user/{id}:
     get:
       summary: Get a user by ID
-      tags: [User]
+      tags: [User Management]
       parameters:
         - in: path
           name: id
@@ -2218,7 +2613,7 @@ paths:
                 $ref: '#/components/schemas/Error'
     put:
       summary: Update a user
-      tags: [User]
+      tags: [User Management]
       security:
         - bearerAuth: []
       parameters:
@@ -2279,7 +2674,7 @@ paths:
                 $ref: '#/components/schemas/Error'
     delete:
       summary: Delete a user
-      tags: [User]
+      tags: [User Management]
       security:
         - bearerAuth: []
       parameters:
@@ -2318,7 +2713,7 @@ paths:
   /api/user/library:
     get:
       summary: Get user's library
-      tags: [User]
+      tags: [User Management]
       security:
         - bearerAuth: []
       responses:
@@ -2342,10 +2737,411 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-  /api/webhook/chapa:
+  /api/users/notifications:
+    get:
+      summary: Get user notifications
+      description: Retrieve notifications for the authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User notifications
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        message:
+                          type: string
+                        createdAt:
+                          type: string
+                          format: date-time
+  /api/seller/dashboard:
+    get:
+      summary: Get seller dashboard overview
+      description: Retrieve seller's dashboard data including sales statistics, recent orders, and inventory status
+      tags: [Admin Operations]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Dashboard data retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      totalSales:
+                        type: number
+                        description: Total sales amount
+                      totalOrders:
+                        type: number
+                        description: Total number of orders
+                      totalBooks:
+                        type: number
+                        description: Total number of books in inventory
+                      recentOrders:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Order'
+                      lowStockBooks:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Book'
+                      monthlySales:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            month:
+                              type: string
+                            amount:
+                              type: number
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - User is not a seller
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /interactions/view:
     post:
-      summary: Handle Chapa webhook
-      tags: [Webhook]
+      tags: [Analytics & Interactions]
+      summary: Record a book view
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - bookId
+              properties:
+                bookId:
+                  type: string
+                  description: ID of the book being viewed
+      responses:
+        '201':
+          description: View recorded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Interaction'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /interactions/rate:
+    post:
+      tags: [Analytics & Interactions]
+      summary: Record a book rating
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - bookId
+                - rating
+              properties:
+                bookId:
+                  type: string
+                  description: ID of the book being rated
+                rating:
+                  type: number
+                  minimum: 1
+                  maximum: 5
+                  description: Rating value (1-5)
+      responses:
+        '200':
+          description: Rating recorded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Interaction'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /interactions/time:
+    post:
+      tags: [Analytics & Interactions]
+      summary: Record time spent on a book
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - bookId
+                - duration
+              properties:
+                bookId:
+                  type: string
+                  description: ID of the book
+                duration:
+                  type: number
+                  minimum: 0
+                  description: Time spent in seconds
+      responses:
+        '200':
+          description: Time spent recorded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Interaction'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /interactions/history:
+    get:
+      tags: [Analytics & Interactions]
+      summary: Get user's interaction history
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: User's interaction history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Interaction'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /interactions/recommendations:
+    get:
+      tags: [Analytics & Interactions]
+      summary: Get personalized book recommendations
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Personalized book recommendations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    _id:
+                      type: string
+                    title:
+                      type: string
+                    author:
+                      type: string
+                    coverImage:
+                      type: string
+                    description:
+                      type: string
+                    genres:
+                      type: array
+                      items:
+                        type: string
+                    rating:
+                      type: number
+                    releaseDate:
+                      type: string
+                      format: date
+                    pages:
+                      type: number
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/wishlist:
+    post:
+      tags: [Cart & Wishlist]
+      summary: Add a book to wishlist
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - book
+              properties:
+                book:
+                  type: string
+                  description: ID of the book to add to wishlist
+      responses:
+        '201':
+          description: Book added to wishlist successfully
+        '400':
+          description: Invalid input or book already in wishlist
+        '404':
+          description: Book not found
+    get:
+      tags: [Cart & Wishlist]
+      summary: Get user's wishlist
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of wishlist items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WishlistItem'
+        '401':
+          description: Not authenticated
+
+  /api/wishlist/{id}:
+    delete:
+      tags: [Cart & Wishlist]
+      summary: Remove a book from wishlist
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: ID of the wishlist item
+      responses:
+        '200':
+          description: Book removed from wishlist successfully
+        '404':
+          description: Wishlist item not found
+
+  /api/wishlist/{id}/cart:
+    post:
+      tags: [Cart & Wishlist]
+      summary: Add wishlist item to cart
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: ID of the wishlist item
+      responses:
+        '200':
+          description: Book added to cart successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Book added to cart successfully
+                  cart:
+                    $ref: '#/components/schemas/Cart'
+        '400':
+          description: Book already in cart or out of stock
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Wishlist item or book not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/users/me:
+    get:
+      tags: [User Management]
+      summary: Get current user's profile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+    put:
+      tags: [User Management]
+      summary: Update current user's profile
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -2353,19 +3149,48 @@ paths:
             schema:
               type: object
               properties:
-                event:
+                name:
                   type: string
-                  example: payment.succeeded
-                data:
+                email:
+                  type: string
+                  format: email
+                currentPassword:
+                  type: string
+                newPassword:
+                  type: string
+                location:
                   type: object
                   properties:
-                    tx_ref:
+                    address:
                       type: string
-                    status:
-                      type: string
+                    coordinates:
+                      type: object
+                      properties:
+                        lat:
+                          type: number
+                        lng:
+                          type: number
       responses:
         '200':
-          description: Webhook processed
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+    delete:
+      tags: [User Management]
+      summary: Delete current user's account
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Account deleted successfully
           content:
             application/json:
               schema:
@@ -2376,4 +3201,682 @@ paths:
                     example: true
                   message:
                     type: string
-                    example: Webhook processed successfully
+                    example: Account deleted successfully
+        '400':
+          description: Cannot delete account with active orders
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /api/users/me/image:
+    put:
+      tags: [User Management]
+      summary: Update user's profile image
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                profileImage:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Profile image updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /api/users/me/orders:
+    get:
+      tags: [User Management]
+      summary: Get user's order history
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of user's orders
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Order'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/users/me/wishlist:
+    get:
+      tags: [User Management]
+      summary: Get user's wishlist
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of wishlist items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WishlistItem'
+        '401':
+          description: Not authenticated
+
+  /api/users/me/reading-history:
+    get:
+      tags: [User Management]
+      summary: Get user's reading history
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User's reading history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Interaction'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/bookshop:
+    post:
+      summary: Create a new bookshop
+      description: Create a new bookshop with the provided details
+      tags: [Bookshop Management]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                tagline:
+                  type: string
+                description:
+                  type: string
+                services:
+                  type: array
+                  items:
+                    type: string
+                contact:
+                  type: object
+                paymentOptions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      provider:
+                        type: string
+                        enum: ["Telebirr", "CBE Birr", "Amole", "HelloCash", "E-Birr"]
+                      phoneNumber:
+                        type: string
+                        pattern: '^\d{10}$'
+                operatingHours:
+                  type: object
+                socialMedia:
+                  type: object
+                upcomingEvents:
+                  type: array
+                location:
+                  type: object
+                logo:
+                  type: string
+                  format: binary
+                background:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Bookshop created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/BookShop'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/bookshop/{id}:
+    get:
+      summary: Get bookshop details
+      tags: [Bookshop Management]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Bookshop ID
+      responses:
+        '200':
+          description: Bookshop details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/BookShop'
+        '404':
+          description: Bookshop not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      summary: Update bookshop details
+      tags: [Bookshop Management]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Bookshop ID
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                tagline:
+                  type: string
+                description:
+                  type: string
+                services:
+                  type: array
+                  items:
+                    type: string
+                contact:
+                  type: object
+                operatingHours:
+                  type: object
+                socialMedia:
+                  type: object
+                upcomingEvents:
+                  type: array
+                location:
+                  type: object
+                logo:
+                  type: string
+                  format: binary
+                background:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Bookshop updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/BookShop'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/bookshop/my-shop:
+    get:
+      summary: Get seller's bookshop
+      tags: [Bookshop Management]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Seller's bookshop details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/BookShop'
+        '404':
+          description: No bookshop found for this seller
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/bookshop/{id}/reviews:
+    post:
+      summary: Create a review for a bookshop
+      tags: [Reviews & Ratings]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Bookshop ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rating:
+                  type: number
+                  minimum: 1
+                  maximum: 5
+                comment:
+                  type: string
+              required:
+                - rating
+      responses:
+        '201':
+          description: Review created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/BookShopReview'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      summary: Get reviews for a bookshop
+      tags: [Reviews & Ratings]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Bookshop ID
+      responses:
+        '200':
+          description: List of bookshop reviews
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BookShopReview'
+
+  /api/bookshop/nearby:
+    get:
+      summary: Get nearby bookshops
+      tags: [Bookshop Management]
+      parameters:
+        - in: query
+          name: longitude
+          required: true
+          schema:
+            type: number
+          description: User's longitude
+        - in: query
+          name: latitude
+          required: true
+          schema:
+            type: number
+          description: User's latitude
+        - in: query
+          name: radius
+          schema:
+            type: number
+            default: 10
+          description: Search radius in kilometers
+      responses:
+        '200':
+          description: List of nearby bookshops
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  count:
+                    type: number
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BookShop'
+
+  /api/bookshop/search:
+    get:
+      summary: Search bookshops
+      tags: [Bookshop Management]
+      parameters:
+        - in: query
+          name: longitude
+          schema:
+            type: number
+          description: User's longitude
+        - in: query
+          name: latitude
+          schema:
+            type: number
+          description: User's latitude
+        - in: query
+          name: radius
+          schema:
+            type: number
+            default: 10
+          description: Search radius in kilometers
+        - in: query
+          name: services
+          schema:
+            type: string
+          description: Comma-separated list of services
+        - in: query
+          name: minRating
+          schema:
+            type: number
+            minimum: 0
+            maximum: 5
+          description: Minimum rating filter
+        - in: query
+          name: category
+          schema:
+            type: string
+          description: Book category filter
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  count:
+                    type: number
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BookShop'
+
+  /api/bookshop/shopList:
+    get:
+      summary: Get all bookshops
+      description: Retrieve a list of all bookshops with their basic information, seller details, and available books
+      tags: [Bookshop Management]
+      responses:
+        '200':
+          description: List of bookshops retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  count:
+                    type: integer
+                    description: Total number of bookshops
+                    example: 5
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BookShop'
+        '400':
+          description: Error retrieving bookshops
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/bookshop/update-fields:
+    patch:
+      summary: Update specific bookshop fields
+      description: |
+        Update your bookshop information. Only the fields you provide will be updated.
+        All fields are optional - you can update just the fields you want to change.
+        
+        Example: To update just the name and phone number:
+        ```json
+        {
+          "name": "New Bookshop Name",
+          "contact": {
+            "phoneNumber": "+1234567890"
+          }
+        }
+        ```
+      tags: [Bookshop Management]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              title: Bookshop Update Form
+              description: Fill in only the fields you want to update
+              properties:
+                name:
+                  type: string
+                  description: The name of your bookshop
+                  example: "Book Haven"
+                tagline:
+                  type: string
+                  description: A short tagline for your bookshop
+                  example: "Your Literary Sanctuary"
+                description:
+                  type: string
+                  description: Detailed description of your bookshop
+                  example: "A cozy bookstore with a wide selection of books"
+                services:
+                  type: array
+                  description: Select the services you offer
+                  items:
+                    type: string
+                    enum: ["Café", "Reading Area", "Author Events", "Children's Corner", "Free Wi-Fi", "Book Club", "Other"]
+                  example: ["Café", "Reading Area", "Free Wi-Fi"]
+                contact:
+                  type: object
+                  description: Your contact information
+                  properties:
+                    phoneNumber:
+                      type: string
+                      description: Your business phone number
+                      example: "+1234567890"
+                    email:
+                      type: string
+                      format: email
+                      description: Your business email
+                      example: "contact@bookhaven.com"
+                    website:
+                      type: string
+                      format: uri
+                      description: Your bookshop website
+                      example: "https://bookhaven.com"
+                operatingHours:
+                  type: object
+                  description: Your business hours
+                  properties:
+                    monday:
+                      type: string
+                      description: Monday hours
+                      example: "9:00 AM - 5:00 PM"
+                    tuesday:
+                      type: string
+                      description: Tuesday hours
+                      example: "9:00 AM - 5:00 PM"
+                    wednesday:
+                      type: string
+                      description: Wednesday hours
+                      example: "9:00 AM - 5:00 PM"
+                    thursday:
+                      type: string
+                      description: Thursday hours
+                      example: "9:00 AM - 5:00 PM"
+                    friday:
+                      type: string
+                      description: Friday hours
+                      example: "9:00 AM - 5:00 PM"
+                    saturday:
+                      type: string
+                      description: Saturday hours
+                      example: "10:00 AM - 4:00 PM"
+                    sunday:
+                      type: string
+                      description: Sunday hours
+                      example: "Closed"
+                socialMedia:
+                  type: object
+                  description: Your social media links
+                  properties:
+                    facebook:
+                      type: string
+                      format: uri
+                      description: Facebook page URL
+                      example: "https://facebook.com/bookhaven"
+                    instagram:
+                      type: string
+                      format: uri
+                      description: Instagram profile URL
+                      example: "https://instagram.com/bookhaven"
+                    twitter:
+                      type: string
+                      format: uri
+                      description: Twitter profile URL
+                      example: "https://twitter.com/bookhaven"
+                location:
+                  type: object
+                  description: Your bookshop location
+                  properties:
+                    address:
+                      type: string
+                      description: Your business address
+                      example: "123 Book Street, New York, NY"
+                    coordinates:
+                      type: array
+                      description: Your location coordinates [longitude, latitude]
+                      items:
+                        type: number
+                      example: [-73.935242, 40.730610]
+      responses:
+        '200':
+          description: Bookshop updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Bookshop updated successfully"
+                  data:
+                    $ref: '#/components/schemas/BookShop'
+        '400':
+          description: Error updating bookshop
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized - Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Bookshop not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

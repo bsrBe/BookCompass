@@ -19,7 +19,21 @@ const handleChapaWebhook = async (req, res) => {
 
     const event = req.body;
 
-    // Only handle refunds for now
+    // Handle successful payments
+    if (event.event === "charge.success" && event.tx_ref) {
+      const order = await Order.findOne({ txRef: event.tx_ref });
+      if (order) {
+        order.paymentStatus = "paid";
+        order.orderStatus = "processing";
+        order.transactionDetails = event;
+        await order.save();
+        console.log(`✅ Payment marked as successful for Order #${order._id}`);
+      } else {
+        console.warn(`Order not found for tx_ref: ${event.tx_ref}`);
+      }
+    }
+
+    // Handle refunds
     if (event.event === "charge.refunded" && event.tx_ref) {
       const order = await Order.findOne({ txRef: event.tx_ref });
       if (order) {
@@ -31,12 +45,6 @@ const handleChapaWebhook = async (req, res) => {
         console.warn(`Order not found for tx_ref: ${event.tx_ref}`);
       }
     }
-
-    // // Optionally handle other events like charge.success
-    // if (event.event === "charge.success") {
-    //   console.log(`✅ Payment successful for tx_ref: ${event.tx_ref}`);
-    //   // You can update payment status here too if needed
-    // }
 
     return res.sendStatus(200); // Acknowledge the event
   } catch (err) {

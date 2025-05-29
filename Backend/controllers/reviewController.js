@@ -82,13 +82,39 @@ const updateReview = async (req, res) => {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    // 3️⃣ Update review fields
-    review.rating = rating || review.rating;
-    review.comment = comment || review.comment;
+    // 3️⃣ Create update object with only changed fields
+    const updateData = {};
 
-    await review.save();
+    if (rating !== undefined) {
+      if (rating < 1 || rating > 5) {
+        return res.status(400).json({ message: "Rating must be between 1 and 5" });
+      }
+      if (rating !== review.rating) {
+        updateData.rating = rating;
+      }
+    }
 
-    // 4️⃣ Recalculate book's average rating
+    if (comment !== undefined && comment !== review.comment) {
+      updateData.comment = comment;
+    }
+
+    // If no fields were updated
+    if (Object.keys(updateData).length === 0) {
+      return res.status(200).json({ 
+        success: true, 
+        message: "No changes detected",
+        review 
+      });
+    }
+
+    // 4️⃣ Update review
+    const updatedReview = await Review.findByIdAndUpdate(
+      reviewId,
+      updateData,
+      { new: true, runValidators: true }
+    );
+
+    // 5️⃣ Recalculate book's average rating
     const reviews = await Review.find({ book: review.book });
     const book = await Book.findById(review.book);
 
@@ -97,7 +123,11 @@ const updateReview = async (req, res) => {
 
     await book.save();
 
-    res.json({ message: "Review updated successfully", review });
+    res.status(200).json({ 
+      success: true,
+      message: "Review updated successfully", 
+      review: updatedReview 
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

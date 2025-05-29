@@ -11,10 +11,14 @@ const register = async (req ,res) => {
         if (existingUser) {
             return res.status(400).json({ message: 'User already exists' });
           }
-          if (role === 'seller' && (!location || !location.address)) {
-              return res.status(400).json({ message: 'Location address is required for sellers' });
-            }
-        const user =await  User.create({name , email , password,  role , profileImageUrl ,location: role === 'seller' ? { address: location.address } : undefined,});
+        const user = await User.create({
+            name, 
+            email, 
+            password,  
+            role, 
+            profileImageUrl, 
+            location: location || undefined
+        });
         if (!user.isEmailConfirmed) {
             // Generate confirmation token
             const confirmationToken = user.generateEmailConfirmationToken();
@@ -36,7 +40,6 @@ const register = async (req ,res) => {
     } catch (error) {
         return res.status(500).json({message : error.message})
     }
-
 }
 
 const Login = async (req , res ,next) => {
@@ -48,8 +51,8 @@ const Login = async (req , res ,next) => {
             return res.status(400).json({msg : "please provide email and password"})
         }
         if (!user) {
-    return res.status(404).json({ msg: "invalid credentials, user not found" });
-}
+            return res.status(404).json({ msg: "invalid credentials, user not found" });
+        }
 
         const isMatch = await user.matchPassword(password);
         if(!isMatch){
@@ -57,16 +60,27 @@ const Login = async (req , res ,next) => {
         }
 
         if (!user.isEmailConfirmed) {
-            return res.status(403).json({ msg: "Please first verify your email. Confirmation link is sent upon registration. Don't forget to check your spam folder." });  
+            // Generate new confirmation token
+            const confirmationToken = user.generateEmailConfirmationToken();
+            await user.save({ validateBeforeSave: false });
+
+            const confirmUrl = `${req.protocol}://${req.get("host")}/api/auth/confirmEmail/${confirmationToken}`;
+            const message = `Click the link to confirm your email: <a href="${confirmUrl}">Verify Email</a>`;
+
+            await sendEmail({
+                email: user.email,
+                subject: "Email Confirmation",
+                message
+            });
+
+            return res.status(403).json({ msg: "Please verify your email. A new confirmation link has been sent. Don't forget to check your spam folder." });  
         }
         
-
         sendTokenResponse(user , 200 ,res)
 
     } catch (error) {
         return res.status(500).json({msg : error.message} )
     }
-    
 }
 
 const getMe = async (req ,res ,next) => {

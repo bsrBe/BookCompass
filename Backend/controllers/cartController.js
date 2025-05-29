@@ -1,4 +1,5 @@
 const Cart = require("../models/cartModel")
+const Book = require("../models/bookModel")
 
 const getCart = async ( req ,res ) => {
     try {
@@ -19,7 +20,28 @@ const getCart = async ( req ,res ) => {
       const { bookId, quantity } = req.body;
       if (!bookId || quantity <= 0) {
         return res.status(400).json({ message: "Invalid book ID or quantity" });
-    }
+      }
+
+      // Check if book exists and get its stock
+      const book = await Book.findById(bookId);
+      if (!book) {
+        return res.status(404).json({ message: "Book not found" });
+      }
+
+      // For physical books, check stock availability
+      if (!book.isDigital && !book.isAudiobook) {
+        let cart = await Cart.findOne({ user: req.user.id }).populate("items.book");
+        const existingItem = cart?.items.find(item => item.book && item.book._id.toString() === bookId);
+        const currentQuantity = existingItem ? existingItem.quantity : 0;
+        const requestedQuantity = Number(quantity);
+
+        if (currentQuantity + requestedQuantity > book.stock) {
+          return res.status(400).json({ 
+            message: `Cannot add more than available stock. Available: ${book.stock}, Requested: ${currentQuantity + requestedQuantity}` 
+          });
+        }
+      }
+
       let cart = await Cart.findOne({ user: req.user.id }).populate("items.book");
 
       if (!cart) {
@@ -31,15 +53,15 @@ const getCart = async ( req ,res ) => {
       const itemIndex = cart.items.findIndex((item) => item.book && item.book._id.toString() === bookId);
       if (itemIndex >= 0) {
         // Update the quantity of the existing item
-        cart.items[itemIndex].quantity =Number(cart.items[itemIndex].quantity)  + Number(quantity);
+        cart.items[itemIndex].quantity = Number(cart.items[itemIndex].quantity) + Number(quantity);
       } else {
         // Add a new item to the cart
-        cart.items.push({ book: bookId, quantity : Number(quantity) });
+        cart.items.push({ book: bookId, quantity: Number(quantity) });
       }  
       cart = await cart.populate({
-  path: "items.book",
-  select: "-fileUrl"
-});
+        path: "items.book",
+        select: "-fileUrl"
+      });
       cart.items = cart.items.filter(item => item.book && item.book.price);
       cart.totalPrice = cart.items.reduce((total, item) => total + item.quantity * item.book.price, 0);
       await cart.save();

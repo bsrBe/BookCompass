@@ -261,77 +261,92 @@ const updateProduct = async (req, res) => {
       return res.status(404).json({ error: "Book not found" });
     }
 
-    const {
-      title,
-      author,
-      description,
-      price,
-      stock,
-      category,
-      isbn,
-      isDigital,
-      isAudiobook,
-    } = req.body;
-
-    const isDigitalBook = isDigital === "true" || isDigital === true;
-    const isAudiobookBook = isAudiobook === "true" || isAudiobook === true;
-
-    let imageUrl = book.imageUrl; // Fixed missing property access
-    let fileUrl = book.fileUrl; // Fixed indentation
-
-    if (isDigitalBook || isAudiobookBook) {
-      if (req.files && req.files.file) {
-        const file = req.files.file[0];
-        fileUrl = await uploadFile(file.buffer, {
-          resource_type: isAudiobookBook ? "video" : "raw",
-          folder: isAudiobookBook ? "audiobooks" : "digital_books",
-        });
+    // Get existing book data
+    const existingData = book.toObject();
+    
+    // Create update object with only changed fields
+    const updateData = {};
+    
+    // Handle text fields
+    const textFields = ['title', 'author', 'description', 'category', 'isbn'];
+    textFields.forEach(field => {
+      if (req.body[field] !== undefined && req.body[field] !== existingData[field]) {
+        updateData[field] = req.body[field];
       }
-      if (req.files && req.files.image) {
-        if (imageUrl && !imageUrl.includes("via.placeholder.com")) {
-          const publicId = imageUrl.split("/").pop().split(".")[0];
-          await cloudinary.uploader.destroy(`product_images/${publicId}`);
+    });
+
+    // Handle numeric fields
+    if (req.body.price !== undefined && parseFloat(req.body.price) !== existingData.price) {
+      updateData.price = parseFloat(req.body.price);
+    }
+    
+    if (req.body.stock !== undefined) {
+      const newStock = parseInt(req.body.stock);
+      if (newStock !== existingData.stock) {
+        if (newStock < 0) {
+          return res.status(400).json({ error: "Stock must be a non-negative number" });
         }
-        const imageFile = req.files.image[0];
-        imageUrl = await uploadImage(imageFile.buffer);
-      }
-    } else {
-      if (stock && (isNaN(stock) || parseInt(stock) < 0)) {
-        return res.status(400).json({ error: "Stock must be a non-negative number" });
-      }
-      if (req.files && req.files.image) {
-        if (imageUrl && !imageUrl.includes("via.placeholder.com")) {
-          const publicId = imageUrl.split("/").pop().split(".")[0];
-          await cloudinary.uploader.destroy(`product_images/${publicId}`);
-        }
-        const imageFile = req.files.image[0];
-        imageUrl = await uploadImage(imageFile.buffer);
+        updateData.stock = newStock;
       }
     }
 
+    // Handle boolean fields
+    if (req.body.isDigital !== undefined) {
+      const isDigital = req.body.isDigital === "true" || req.body.isDigital === true;
+      if (isDigital !== existingData.isDigital) {
+        updateData.isDigital = isDigital;
+      }
+    }
+    
+    if (req.body.isAudiobook !== undefined) {
+      const isAudiobook = req.body.isAudiobook === "true" || req.body.isAudiobook === true;
+      if (isAudiobook !== existingData.isAudiobook) {
+        updateData.isAudiobook = isAudiobook;
+      }
+    }
+
+    // Handle file uploads
+    if (req.files) {
+      if (req.files.image) {
+        // Delete old image if exists
+        if (existingData.imageUrl && !existingData.imageUrl.includes("via.placeholder.com")) {
+          const publicId = existingData.imageUrl.split("/").pop().split(".")[0];
+          await cloudinary.uploader.destroy(`product_images/${publicId}`);
+        }
+        const imageFile = req.files.image[0];
+        updateData.imageUrl = await uploadImage(imageFile.buffer);
+      }
+
+      if (req.files.file && (updateData.isDigital || updateData.isAudiobook)) {
+        const file = req.files.file[0];
+        updateData.fileUrl = await uploadFile(file.buffer, {
+          resource_type: updateData.isAudiobook ? "video" : "raw",
+          folder: updateData.isAudiobook ? "audiobooks" : "digital_books",
+        });
+      }
+    }
+
+    // If no fields were updated
+    if (Object.keys(updateData).length === 0) {
+      return res.status(200).json({ 
+        success: true, 
+        message: "No changes detected",
+        data: book 
+      });
+    }
+
+    // Update the book
     const updatedBook = await Book.findByIdAndUpdate(
       id,
-      {
-        title,
-        author,
-        description,
-        price: price ? parseFloat(price) : book.price,
-        stock: isDigitalBook || isAudiobookBook ? null : (stock || book.stock),
-        category,
-        imageUrl,
-        isbn,
-        isDigital: isDigitalBook,
-        isAudiobook: isAudiobookBook,
-        fileUrl: isDigitalBook || isAudiobookBook ? fileUrl : undefined,
-      },
+      updateData,
       { new: true, runValidators: true }
     );
 
-    if (!updatedBook) {
-      return res.status(404).json({ error: "Book not found" });
-    }
-
-    res.status(200).json({ success: true, data: updatedBook });
+    res.status(200).json({ 
+      success: true, 
+      message: "Book updated successfully",
+      data: updatedBook 
+    });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -355,24 +370,54 @@ const deleteProduct = async (req, res) => {
 
 const updateAdminProfile = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
-    const admin = await User.findById(req.user.id);
+    const adminId = req.user.id;
+    const { name, email } = req.body;
 
+    // Get existing admin data
+    const admin = await User.findById(adminId);
     if (!admin) {
       return res.status(404).json({ error: "Admin not found" });
     }
 
-    admin.name = name || admin.name;
-    admin.email = email || admin.email;
-    if (password) {
-      const salt = await bcrypt.genSalt(10);
-      admin.password = await bcrypt.hash(password, salt);
+    // Create update object with only changed fields
+    const updateData = {};
+
+    if (name !== undefined && name !== admin.name) {
+      updateData.name = name;
     }
 
-    await admin.save();
-    res.status(200).json({ success: true, message: "Profile updated successfully" });
+    if (email !== undefined && email !== admin.email) {
+      // Check if email is already taken
+      const existingUser = await User.findOne({ email });
+      if (existingUser && existingUser._id.toString() !== adminId) {
+        return res.status(400).json({ error: "Email is already taken" });
+      }
+      updateData.email = email;
+    }
+
+    // If no fields were updated
+    if (Object.keys(updateData).length === 0) {
+      return res.status(200).json({ 
+        success: true, 
+        message: "No changes detected",
+        data: admin 
+      });
+    }
+
+    // Update the admin
+    const updatedAdmin = await User.findByIdAndUpdate(
+      adminId,
+      updateData,
+      { new: true, runValidators: true }
+    );
+
+    res.status(200).json({ 
+      success: true, 
+      message: "Profile updated successfully",
+      data: updatedAdmin 
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(400).json({ error: error.message });
   }
 };
 

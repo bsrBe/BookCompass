@@ -14,10 +14,14 @@ const reviewRoutes = require("./routes/reviewRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const webhookRoutes = require("./routes/webhookRoutes");
 const userRoutes = require("./routes/userRoutes");
+const sellerRoutes = require("./routes/sellerRoutes");
+const interactionRoutes = require("./routes/interactionRoutes"); // Add interaction routes
+const wishlistRoutes = require("./routes/wishlistRoutes");
+const bookShopRoutes = require("./routes/bookShopRoutes");
 // const opn = require('opn');
 const path = require("path"); 
 app.use(cors({
-  origin: ['http://localhost:8080', 'http://localhost:5173', 'http://localhost:3000' ,'https://bookcompass.onrender.com'],
+  origin: ['http://localhost:8080', 'http://localhost:5173', 'http://localhost:3000','https://bookapi-c2zu.onrender.com' ,'https://bookcompass.onrender.com'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
@@ -70,7 +74,11 @@ app.use("/api/cart" , cartRoutes);
 app.use("/api/order" , orderRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/webhook", webhookRoutes);
-app.use('/api/user', userRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/seller', sellerRoutes);
+app.use('/api/interactions', interactionRoutes);
+app.use('/api/wishlist',wishlistRoutes);
+app.use("/api/bookshop", bookShopRoutes);
 
 connectDB();
 
