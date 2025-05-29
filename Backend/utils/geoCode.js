@@ -66,28 +66,63 @@ const extractCoordinatesFromGoogleMapsUrl = async (url) => {
 
 const geocodeAddress = async (address) => {
     try {
-        // Check if the input is a Google Maps URL
-        if (address.startsWith('http') && (address.includes('google.com/maps') || address.includes('maps.google.com') || address.includes('maps.app.goo.gl'))) {
-            const coordinates = await extractCoordinatesFromGoogleMapsUrl(address);
-            if (coordinates) {
-                return coordinates;
+        const cleanedAddress = address
+            .replace(/,+/g, ", ")
+            .replace(/\s+/g, " ")
+            .trim();
+
+        const ETHIOPIAN_LOCATIONS = {
+            mexico: { lat: 9.001442, lng: 38.6771697 },
+            "mexico, addis ababa": { lat: 9.001442, lng: 38.6771697 },
+            bole: { lat: 8.9806, lng: 38.7998 },
+            piassa: { lat: 9.0300, lng: 38.7500 },
+        };
+
+        const normalizedAddress = cleanedAddress.toLowerCase();
+        if (ETHIOPIAN_LOCATIONS[normalizedAddress]) {
+            return ETHIOPIAN_LOCATIONS[normalizedAddress];
+        }
+
+        const ethiopiaQuery = cleanedAddress.includes("Ethiopia")
+            ? cleanedAddress
+            : `${cleanedAddress}, Ethiopia`;
+
+        const response = await axios.get(
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(ethiopiaQuery)}&countrycodes=et&limit=1`
+        );
+
+        if (response.data?.length > 0) {
+            const result = response.data[0];
+            const lat = parseFloat(result.lat);
+            const lon = parseFloat(result.lon);
+
+            if (lat >= 3.4 && lat <= 14.9 && lon >= 33.0 && lon <= 48.0) {
+                return { lat, lng: lon };
             }
         }
 
-        // If not a valid Google Maps URL or coordinates couldn't be extracted,
-        // fall back to OpenRouteService API
-        const response = await axios.get('https://api.openrouteservice.org/geocode/search', {
-            params: {
-                api_key: process.env.ORS_API_KEY,
-                text: address,
-                size: 1,  // Return 1 result
-            },
-        });
-        const { coordinates } = response.data.features[0].geometry; // [lon, lat]
-        return { lat: coordinates[1], lng: coordinates[0] };
+        const components = cleanedAddress.split(",").map((c) => c.trim());
+        for (let i = 0; i < components.length; i++) {
+            const partialQuery = `${components.slice(i).join(", ")}, Ethiopia`;
+            const fallbackResponse = await axios.get(
+                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(partialQuery)}&countrycodes=et&limit=1`
+            );
+
+            if (fallbackResponse.data?.length > 0) {
+                const result = fallbackResponse.data[0];
+                const lat = parseFloat(result.lat);
+                const lon = parseFloat(result.lon);
+
+                if (lat >= 3.4 && lat <= 14.9 && lon >= 33.0 && lon <= 48.0) {
+                    return { lat, lng: lon };
+                }
+            }
+        }
+
+        throw new Error("Address not found in Ethiopia");
     } catch (error) {
-        console.error('Geocoding error:', error.response ? error.response.data : error);
-        throw new Error('Failed to geocode address');
+        console.error("Geocoding error:", error);
+        throw new Error(`Could not locate "${address}" in Ethiopia. Please try format: "Neighborhood, City, Ethiopia"`);
     }
 };
 
