@@ -20,48 +20,29 @@ const createBookShop = async (req, res) => {
         console.log("Request body:", req.body);
         console.log("Request files:", req.files);
 
+        // Extract form fields directly
         const {
             name,
             tagline,
             description,
             services,
-            contact,
-            operatingHours,
-            socialMedia,
-            upcomingEvents,
-            location,
-            paymentOptions
+            contactPhone,
+            contactEmail,
+            contactWebsite,
+            paymentProviders,
+            paymentPhoneNumbers,
+            mondayHours,
+            tuesdayHours,
+            wednesdayHours,
+            thursdayHours,
+            fridayHours,
+            saturdayHours,
+            sundayHours,
+            facebookUrl,
+            instagramUrl,
+            twitterUrl,
+            location
         } = req.body;
-
-        // Parse JSON strings if they are strings
-        let parsedContact, parsedLocation, parsedServices, parsedPaymentOptions;
-        try {
-            parsedContact = contact ? (typeof contact === 'string' ? JSON.parse(contact) : contact) : {};
-            parsedLocation = location ? (typeof location === 'string' ? JSON.parse(location) : location) : {};
-            parsedServices = services ? (typeof services === 'string' ? JSON.parse(services) : services) : [];
-            parsedPaymentOptions = paymentOptions ? (typeof paymentOptions === 'string' ? JSON.parse(paymentOptions) : paymentOptions) : [];
-        } catch (error) {
-            console.error("JSON parsing error:", error);
-            return res.status(400).json({ 
-                message: "Invalid JSON format in request data",
-                error: error.message,
-                receivedData: {
-                    contact,
-                    location,
-                    services,
-                    paymentOptions
-                }
-            });
-        }
-
-        // Debug log for parsed data
-        console.log("Parsed data:", {
-            name,
-            parsedContact,
-            parsedLocation,
-            parsedServices,
-            parsedPaymentOptions
-        });
 
         // Validate required fields
         if (!name || name.trim() === '') {
@@ -70,25 +51,27 @@ const createBookShop = async (req, res) => {
                 receivedName: name 
             });
         }
-        if (!parsedContact?.phoneNumber) {
+        if (!contactPhone) {
             return res.status(400).json({ message: "Phone number is required" });
         }
-        if (!parsedContact?.email) {
-            return res.status(400).json({ message: "Email is required" });
-        }
-        if (!parsedLocation?.address) {
-            return res.status(400).json({ message: "Address is required" });
+        if (!location) {
+            return res.status(400).json({ message: "Location is required" });
         }
 
+        // Parse services and payment providers from comma-separated strings
+        const servicesList = services ? services.split(',').map(s => s.trim()) : [];
+        const paymentProvidersList = paymentProviders ? paymentProviders.split(',').map(p => p.trim()) : [];
+        const paymentPhoneNumbersList = paymentPhoneNumbers ? paymentPhoneNumbers.split(',').map(p => p.trim()) : [];
+
         // Validate payment options if provided
-        if (parsedPaymentOptions && parsedPaymentOptions.length > 0) {
-            for (const option of parsedPaymentOptions) {
-                if (!option.provider || !option.phoneNumber) {
-                    return res.status(400).json({ 
-                        message: "Each payment option must have both provider and phone number" 
-                    });
-                }
-                if (!/^\d{10}$/.test(option.phoneNumber)) {
+        if (paymentProvidersList.length > 0) {
+            if (paymentProvidersList.length !== paymentPhoneNumbersList.length) {
+                return res.status(400).json({ 
+                    message: "Number of payment providers must match number of phone numbers" 
+                });
+            }
+            for (const phoneNumber of paymentPhoneNumbersList) {
+                if (!/^\d{10}$/.test(phoneNumber)) {
                     return res.status(400).json({ 
                         message: "Payment phone number must be exactly 10 digits" 
                     });
@@ -96,15 +79,69 @@ const createBookShop = async (req, res) => {
             }
         }
 
-        // Geocode the address
+        // Create payment options array
+        const paymentOptions = paymentProvidersList.map((provider, index) => ({
+            provider,
+            phoneNumber: paymentPhoneNumbersList[index]
+        }));
+
+        // Extract coordinates from Google Maps URL or use provided coordinates
         let coordinates;
         try {
-            coordinates = await geocodeAddress(parsedLocation.address);
+            if (location.startsWith('http')) {
+                // Extract coordinates from Google Maps URL
+                const url = new URL(location);
+                
+                // Try different methods to extract coordinates
+                // Method 1: Check for coordinates in the path (e.g., /@lat,lng,zoom)
+                const pathMatch = url.pathname.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+                if (pathMatch) {
+                    const [_, lat, lng] = pathMatch;
+                    coordinates = { lat: parseFloat(lat), lng: parseFloat(lng) };
+                } else {
+                    // Method 2: Check query parameters
+                    const queryParams = new URLSearchParams(url.search);
+                    const q = queryParams.get('q');
+                    if (q) {
+                        const coordsMatch = q.match(/(-?\d+\.\d+),(-?\d+\.\d+)/);
+                        if (coordsMatch) {
+                            const [_, lat, lng] = coordsMatch;
+                            coordinates = { lat: parseFloat(lat), lng: parseFloat(lng) };
+                        }
+                    }
+                }
+
+                // Method 3: Check for coordinates in the data parameter
+                if (!coordinates) {
+                    const dataMatch = url.pathname.match(/data=!4m\d+!3m\d+!1s[^!]+!8m2!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+                    if (dataMatch) {
+                        const [_, lat, lng] = dataMatch;
+                        coordinates = { lat: parseFloat(lat), lng: parseFloat(lng) };
+                    }
+                }
+            } else {
+                // Assume location is in "latitude,longitude" format
+                const [lat, lng] = location.split(',').map(Number);
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    coordinates = { lat, lng };
+                }
+            }
+
+            if (!coordinates) {
+                throw new Error("Could not extract coordinates from location. Please provide a valid Google Maps URL or coordinates in 'latitude,longitude' format.");
+            }
+
+            // Validate coordinate ranges
+            if (coordinates.lat < -90 || coordinates.lat > 90 || 
+                coordinates.lng < -180 || coordinates.lng > 180) {
+                throw new Error("Invalid coordinate values. Latitude must be between -90 and 90, and longitude between -180 and 180.");
+            }
         } catch (error) {
-            console.error("Geocoding error:", error);
+            console.error("Location parsing error:", error);
             return res.status(400).json({ 
-                message: "Could not validate the provided address",
-                error: error.message
+                message: "Invalid location format. Please provide a valid Google Maps URL or coordinates in 'latitude,longitude' format.",
+                error: error.message,
+                receivedLocation: location
             });
         }
 
@@ -131,18 +168,29 @@ const createBookShop = async (req, res) => {
 
         const bookShop = await BookShop.create({
             name: name.trim(),
-            tagline: tagline?.trim() || undefined,
-            description: description?.trim() || undefined,
-            services: parsedServices || [],
+            tagline: tagline?.trim(),
+            description: description?.trim(),
+            services: servicesList,
             contact: {
-                phoneNumber: parsedContact.phoneNumber,
-                email: parsedContact.email,
-                website: parsedContact.website || undefined
+                phoneNumber: contactPhone,
+                email: contactEmail,
+                website: contactWebsite
             },
-            paymentOptions: parsedPaymentOptions || [],
-            operatingHours: operatingHours || {},
-            socialMedia: socialMedia || {},
-            upcomingEvents: upcomingEvents || [],
+            paymentOptions,
+            operatingHours: {
+                monday: mondayHours || "9:00 AM - 5:00 PM",
+                tuesday: tuesdayHours || "9:00 AM - 5:00 PM",
+                wednesday: wednesdayHours || "9:00 AM - 5:00 PM",
+                thursday: thursdayHours || "9:00 AM - 5:00 PM",
+                friday: fridayHours || "9:00 AM - 5:00 PM",
+                saturday: saturdayHours || "10:00 AM - 4:00 PM",
+                sunday: sundayHours || "Closed"
+            },
+            socialMedia: {
+                facebook: facebookUrl,
+                instagram: instagramUrl,
+                twitter: twitterUrl
+            },
             images: {
                 logo: logoUrl,
                 background: backgroundUrl
@@ -151,7 +199,7 @@ const createBookShop = async (req, res) => {
             location: {
                 type: "Point",
                 coordinates: [coordinates.lng, coordinates.lat],
-                address: parsedLocation.address
+                address: location // Store the original location string
             }
         });
 
