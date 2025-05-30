@@ -6,12 +6,12 @@ const User = require("../models/userModel");
 const asyncHandler = require("../utils/asyncHandler");
 const axios = require("axios");
 const sendEmail = require("../utils/sendEmail");
+const { geocodeAddress } = require("../utils/geoCode");
 require("dotenv").config();
 const CHAPA_SECRET_KEY = process.env.CHAPA_SECRET_KEY;
 const CHAPA_API_URL = "https://api.chapa.co/v1/transaction/initialize";
 const CHAPA_VERIFY_URL = "https://api.chapa.co/v1/transaction/verify/";
 const Notification = require("../models/notificationModel");
-const  geocodeAddress  = require("../utils/geocode");
 
 const getDistance = async (point1, point2) => {
   try {
@@ -165,7 +165,7 @@ const createOrder = async (req, res) => {
               };
             } catch (error) {
               console.error(`Delivery calculation failed for seller ${group.seller._id}:`, error.message);
-              group.deliveryFee = 99;
+              group.deliveryFee = 100;
               group.distance = null;
               group.fromLocation = {
                 type: "Point",
