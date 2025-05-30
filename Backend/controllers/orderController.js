@@ -41,7 +41,16 @@ const createOrder = async (req, res) => {
 
     const cart = await Cart.findOne({ user: userId }).populate({
       path: "items.book",
-      populate: { path: "seller", select: "name email location" },
+      populate: [
+        { 
+          path: "seller", 
+          select: "name email"
+        },
+        {
+          path: "shop",
+          select: "location"
+        }
+      ],
     });
     if (!cart) {
       return res.status(404).json({ message: "Cart not found for this user" });
@@ -85,10 +94,21 @@ const createOrder = async (req, res) => {
       const sellerId = item.book.seller._id.toString();
       if (!sellerGroups.has(sellerId)) {
         const hasValidLocation =
-          item.book.seller.location &&
-          item.book.seller.location.coordinates &&
-          typeof item.book.seller.location.coordinates.lat === "number" &&
-          typeof item.book.seller.location.coordinates.lng === "number";
+          item.book.shop &&
+          item.book.shop.location &&
+          item.book.shop.location.coordinates &&
+          Array.isArray(item.book.shop.location.coordinates) &&
+          item.book.shop.location.coordinates.length === 2 &&
+          typeof item.book.shop.location.coordinates[0] === 'number' &&
+          typeof item.book.shop.location.coordinates[1] === 'number';
+
+        console.log('Seller location validation:', {
+          sellerId,
+          shop: item.book.shop,
+          hasValidLocation,
+          coordinates: item.book.shop?.location?.coordinates
+        });
+
         sellerGroups.set(sellerId, {
           seller: item.book.seller,
           physicalItems: [],
@@ -97,7 +117,7 @@ const createOrder = async (req, res) => {
           subtotal: 0,
           hasValidLocation,
           sellerLocation: hasValidLocation
-            ? { lat: item.book.seller.location.coordinates.lat, lng: item.book.seller.location.coordinates.lng }
+            ? { lat: item.book.shop.location.coordinates[1], lng: item.book.shop.location.coordinates[0] }
             : null,
         });
       }
@@ -143,7 +163,17 @@ const createOrder = async (req, res) => {
     await Promise.all(
       sellerGroupsArray.map(async (group) => {
         if (group.physicalItems.length > 0) {
+          console.log(`Processing delivery fee for seller ${group.seller._id}:`, {
+            hasValidLocation: group.hasValidLocation,
+            sellerLocation: group.sellerLocation,
+            shippingCoords,
+            sellerLocationType: typeof group.sellerLocation,
+            sellerLocationLat: group.sellerLocation?.lat,
+            sellerLocationLng: group.sellerLocation?.lng
+          });
+
           if (!group.hasValidLocation || !group.sellerLocation) {
+            console.log(`Using fallback delivery fee for seller ${group.seller._id} - Invalid location`);
             group.deliveryFee = 100;
             group.distance = null;
             group.fromLocation = {
@@ -153,9 +183,24 @@ const createOrder = async (req, res) => {
             };
           } else {
             try {
+              console.log(`Attempting distance calculation between:`, {
+                from: {
+                  lat: group.sellerLocation.lat,
+                  lng: group.sellerLocation.lng
+                },
+                to: {
+                  lat: shippingCoords[1],
+                  lng: shippingCoords[0]
+                }
+              });
+
               const distance = await getDistance(group.sellerLocation, {
                 lat: shippingCoords[1],
                 lng: shippingCoords[0],
+              });
+              console.log(`Calculated distance for seller ${group.seller._id}:`, {
+                distance,
+                calculatedFee: Math.max(50, Math.min(distance * 10, 500))
               });
               group.deliveryFee = Math.max(50, Math.min(distance * 10, 500));
               group.distance = distance;
