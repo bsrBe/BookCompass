@@ -45,6 +45,9 @@ const extractCoordinatesFromGoogleMapsUrl = async (url) => {
                 
                 // Extract coordinates from the final URL
                 const finalUrl = response.request.res.responseUrl;
+                console.log('Final URL after redirect:', finalUrl);
+                
+                // Try all patterns again on the final URL
                 const finalPlaceMatch = finalUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
                 if (finalPlaceMatch) {
                     return {
@@ -52,6 +55,33 @@ const extractCoordinatesFromGoogleMapsUrl = async (url) => {
                         lng: parseFloat(finalPlaceMatch[2])
                     };
                 }
+
+                const finalQueryMatch = finalUrl.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+                if (finalQueryMatch) {
+                    return {
+                        lat: parseFloat(finalQueryMatch[1]),
+                        lng: parseFloat(finalQueryMatch[2])
+                    };
+                }
+
+                const finalLlMatch = finalUrl.match(/[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/);
+                if (finalLlMatch) {
+                    return {
+                        lat: parseFloat(finalLlMatch[1]),
+                        lng: parseFloat(finalLlMatch[2])
+                    };
+                }
+
+                // Try to extract from data parameter
+                const dataMatch = finalUrl.match(/data=!4m\d+!3m\d+!1s[^!]+!8m2!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+                if (dataMatch) {
+                    return {
+                        lat: parseFloat(dataMatch[1]),
+                        lng: parseFloat(dataMatch[2])
+                    };
+                }
+
+                console.log('Could not extract coordinates from final URL:', finalUrl);
             } catch (error) {
                 console.error('Error following maps.app.goo.gl redirect:', error);
             }
