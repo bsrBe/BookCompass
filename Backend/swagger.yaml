@@ -6,7 +6,7 @@ info:
 servers:
   - url: http://localhost:5000
     description: Local development server
-  - url: https://bookcompass.onrender.com
+  - url: https://bookapi-c2zu.onrender.com
     description: Production server
 components:
   securitySchemes:
@@ -355,133 +355,141 @@ components:
           format: date-time
     BookShop:
       type: object
+      required:
+        - name
+        - contact
+        - location
       properties:
         name:
           type: string
           description: Name of the bookshop
+          example: "Central Bookstore"
         tagline:
           type: string
           description: Short tagline for the bookshop
+          example: "Your Literary Haven"
         description:
           type: string
           description: Detailed description of the bookshop
+          example: "A cozy bookstore with a wide selection of books and a reading area"
         services:
           type: array
           items:
             type: string
             enum: ["Café", "Reading Area", "Author Events", "Children's Corner", "Free Wi-Fi", "Book Club", "Other"]
-          description: List of services offered by the bookshop
+          description: Services offered by the bookshop
+          example: ["Café", "Reading Area", "Free Wi-Fi"]
         contact:
           type: object
+          required:
+            - phoneNumber
+            - email
           properties:
             phoneNumber:
               type: string
               description: Contact phone number
+              example: "+251912345678"
             email:
               type: string
               format: email
               description: Contact email address
+              example: "contact@bookstore.com"
             website:
               type: string
               format: uri
               description: Bookshop website URL
+              example: "https://bookstore.com"
+        location:
+          type: object
+          required:
+            - address
+          properties:
+            address:
+              type: string
+              description: Physical address of the bookshop
+              example: "Bole, Addis Ababa, Ethiopia"
+            coordinates:
+              type: array
+              items:
+                type: number
+              description: [longitude, latitude] coordinates
+              example: [38.7465, 9.0320]
         paymentOptions:
           type: array
           items:
             type: object
+            required:
+              - provider
+              - phoneNumber
             properties:
               provider:
                 type: string
                 enum: ["Telebirr", "CBE Birr", "Amole", "HelloCash", "E-Birr"]
+                description: Payment provider name
               phoneNumber:
                 type: string
+                description: Phone number for the payment provider
                 pattern: '^\d{10}$'
-                description: 10-digit phone number for the payment service
-          description: List of payment options available at the bookshop
+                example: "0912345678"
         operatingHours:
           type: object
           properties:
             monday:
               type: string
-              default: "9:00 AM - 5:00 PM"
+              example: "9:00 AM - 5:00 PM"
             tuesday:
               type: string
-              default: "9:00 AM - 5:00 PM"
+              example: "9:00 AM - 5:00 PM"
             wednesday:
               type: string
-              default: "9:00 AM - 5:00 PM"
+              example: "9:00 AM - 5:00 PM"
             thursday:
               type: string
-              default: "9:00 AM - 5:00 PM"
+              example: "9:00 AM - 5:00 PM"
             friday:
               type: string
-              default: "9:00 AM - 5:00 PM"
+              example: "9:00 AM - 5:00 PM"
             saturday:
               type: string
-              default: "10:00 AM - 4:00 PM"
+              example: "10:00 AM - 4:00 PM"
             sunday:
               type: string
-              default: "Closed"
+              example: "Closed"
         socialMedia:
           type: object
           properties:
             facebook:
               type: string
               format: uri
+              example: "https://facebook.com/bookstore"
             instagram:
               type: string
               format: uri
+              example: "https://instagram.com/bookstore"
             twitter:
               type: string
               format: uri
-            other:
-              type: string
-              format: uri
-        upcomingEvents:
-          type: array
-          items:
-            type: object
-            properties:
-              name:
-                type: string
-              date:
-                type: string
-                format: date
-              time:
-                type: string
-                pattern: '^([0-1]?[0-9]|2[0-3]):[0-5][0-9] (AM|PM)$'
-              description:
-                type: string
+              example: "https://twitter.com/bookstore"
         images:
           type: object
           properties:
             logo:
               type: string
               format: uri
+              example: "https://res.cloudinary.com/example/image/upload/v1234567890/bookshop_logos/logo.jpg"
             background:
               type: string
               format: uri
-        location:
-          type: object
-          properties:
-            type:
-              type: string
-              enum: ['Point']
-            coordinates:
-              type: array
-              items:
-                type: number
-              minItems: 2
-              maxItems: 2
-            address:
-              type: string
+              example: "https://res.cloudinary.com/example/image/upload/v1234567890/bookshop_backgrounds/background.jpg"
         averageRating:
           type: number
           minimum: 0
           maximum: 5
+          example: 4.5
         numReviews:
           type: integer
           minimum: 0
+          example: 10
 
     BookShopReview:
       type: object
@@ -508,110 +516,11 @@ components:
         - bookShop
         - rating
 
-    BookShopCreate:
-      type: object
-      properties:
-        name:
-          type: string
-          description: Name of the bookshop
-          example: "Book Haven"
-        tagline:
-          type: string
-          description: Short tagline for the bookshop
-          example: "Your Literary Sanctuary"
-        description:
-          type: string
-          description: Detailed description of the bookshop
-          example: "A cozy bookstore with a wide selection of books"
-        services:
-          type: string
-          description: Comma-separated list of services. Optional.
-          example: "Café,Reading Area,Free Wi-Fi"
-        contactPhone:
-          type: string
-          description: Business phone number
-          example: "+251912345678"
-        contactEmail:
-          type: string
-          format: email
-          description: Business email address. Optional.
-          example: "contact@bookhaven.com"
-        contactWebsite:
-          type: string
-          format: uri
-          description: Bookshop website URL. Optional.
-          example: "https://bookhaven.com"
-        paymentProviders:
-          type: string
-          description: Comma-separated list of payment providers. Optional.
-          example: "Telebirr,CBE Birr,Amole"
-        paymentPhoneNumbers:
-          type: string
-          description: Comma-separated list of payment phone numbers. Must match providers if provided.
-          example: "0912345678,0923456789,0934567890"
-        mondayHours:
-          type: string
-          description: Monday operating hours. Optional, defaults to "9:00 AM - 5:00 PM"
-          example: "9:00 AM - 5:00 PM"
-        tuesdayHours:
-          type: string
-          description: Tuesday operating hours. Optional, defaults to "9:00 AM - 5:00 PM"
-          example: "9:00 AM - 5:00 PM"
-        wednesdayHours:
-          type: string
-          description: Wednesday operating hours. Optional, defaults to "9:00 AM - 5:00 PM"
-          example: "9:00 AM - 5:00 PM"
-        thursdayHours:
-          type: string
-          description: Thursday operating hours. Optional, defaults to "9:00 AM - 5:00 PM"
-          example: "9:00 AM - 5:00 PM"
-        fridayHours:
-          type: string
-          description: Friday operating hours. Optional, defaults to "9:00 AM - 5:00 PM"
-          example: "9:00 AM - 5:00 PM"
-        saturdayHours:
-          type: string
-          description: Saturday operating hours. Optional, defaults to "10:00 AM - 4:00 PM"
-          example: "10:00 AM - 4:00 PM"
-        sundayHours:
-          type: string
-          description: Sunday operating hours. Optional, defaults to "Closed"
-          example: "Closed"
-        facebookUrl:
-          type: string
-          format: uri
-          description: Facebook page URL. Optional.
-          example: "https://facebook.com/bookhaven"
-        instagramUrl:
-          type: string
-          format: uri
-          description: Instagram profile URL. Optional.
-          example: "https://instagram.com/bookhaven"
-        twitterUrl:
-          type: string
-          format: uri
-          description: Twitter profile URL. Optional.
-          example: "https://twitter.com/bookhaven"
-        location:
-          type: string
-          description: |
-            Bookshop location. Can be provided in two ways:
-            1. Google Maps URL (e.g., "https://maps.google.com/?q=8.5670,39.2894")
-            2. Coordinates in "latitude,longitude" format (e.g., "8.5670,39.2894")
-            The frontend will handle this by either:
-            - Using the browser's geolocation API when user clicks "Use My Location"
-            - Accepting a Google Maps URL when user pastes it manually
-          example: "https://maps.google.com/?q=8.5670,39.2894"
-      required:
-        - name
-        - contactPhone
-        - location
-
 paths:
   /api/auth/me:
     get:
       summary: Get current user
-      tags: [Authentication]
+      tags: [Auth]
       security:
         - bearerAuth: []
       responses:
@@ -636,7 +545,7 @@ paths:
   /api/auth/register:
     post:
       summary: Register a new user
-      tags: [Authentication]
+      tags: [Auth]
       requestBody:
         required: true
         content:
@@ -688,7 +597,7 @@ paths:
   /api/auth/login:
     post:
       summary: Login user
-      tags: [Authentication]
+      tags: [Auth]
       requestBody:
         required: true
         content:
@@ -731,7 +640,7 @@ paths:
   /api/auth/forgotPassword:
     post:
       summary: Request password reset
-      tags: [Authentication]
+      tags: [Auth]
       requestBody:
         required: true
         content:
@@ -768,7 +677,7 @@ paths:
   /api/auth/resetPassword/{token}:
     put:
       summary: Reset password
-      tags: [Authentication]
+      tags: [Auth]
       parameters:
         - in: path
           name: token
@@ -813,7 +722,7 @@ paths:
   /api/auth/confirmEmail/{token}:
     get:
       summary: Confirm email address
-      tags: [Authentication]
+      tags: [Auth]
       parameters:
         - in: path
           name: token
@@ -844,7 +753,7 @@ paths:
   /api/auth/inviteAdmin:
     post:
       summary: Invite a new admin
-      tags: [Admin Operations]
+      tags: [Auth]
       security:
         - bearerAuth: []
       requestBody:
@@ -887,7 +796,7 @@ paths:
   /api/cart/getCart:
     get:
       summary: Get user's cart
-      tags: [Cart & Wishlist]
+      tags: [Cart]
       security:
         - bearerAuth: []
       responses:
@@ -918,7 +827,7 @@ paths:
   /api/cart/createCart:
     post:
       summary: Add item to cart
-      tags: [Cart & Wishlist]
+      tags: [Cart]
       security:
         - bearerAuth: []
       requestBody:
@@ -965,7 +874,7 @@ paths:
   /api/cart/updateCart/{id}:
     put:
       summary: Update cart item quantity
-      tags: [Cart & Wishlist]
+      tags: [Cart]
       security:
         - bearerAuth: []
       parameters:
@@ -1015,7 +924,7 @@ paths:
   /api/cart/deleteCart/{id}:
     delete:
       summary: Remove item from cart
-      tags: [Cart & Wishlist]
+      tags: [Cart]
       security:
         - bearerAuth: []
       parameters:
@@ -1047,7 +956,7 @@ paths:
   /api/admin/dashboard:
     get:
       summary: Get admin dashboard overview
-      tags: [Admin Operations]
+      tags: [Admin]
       security:
         - bearerAuth: []
       responses:
@@ -1079,7 +988,7 @@ paths:
   /api/admin/users:
     get:
       summary: Get all users
-      tags: [Admin Operations]
+      tags: [Admin]
       security:
         - bearerAuth: []
       responses:
@@ -1106,7 +1015,7 @@ paths:
   /api/admin/users/{id}:
     get:
       summary: Get a user by ID
-      tags: [Admin Operations]
+      tags: [Admin]
       security:
         - bearerAuth: []
       parameters:
@@ -1143,7 +1052,7 @@ paths:
                 $ref: '#/components/schemas/Error'
     delete:
       summary: Delete a user
-      tags: [Admin Operations]
+      tags: [Admin]
       security:
         - bearerAuth: []
       parameters:
@@ -1176,7 +1085,7 @@ paths:
   /api/admin/createUsers:
     post:
       summary: Create a new user
-      tags: [Admin Operations]
+      tags: [Admin]
       security:
         - bearerAuth: []
       requestBody:
@@ -1227,7 +1136,7 @@ paths:
   /api/admin/users/{id}/block:
     put:
       summary: Block a user
-      tags: [Admin Operations]
+      tags: [Admin]
       security:
         - bearerAuth: []
       parameters:
@@ -1259,7 +1168,7 @@ paths:
   /api/admin/users/{id}/unblock:
     put:
       summary: Unblock a user
-      tags: [Admin Operations]
+      tags: [Admin]
       security:
         - bearerAuth: []
       parameters:
@@ -1291,7 +1200,7 @@ paths:
   /api/admin/products:
     get:
       summary: Get all products
-      tags: [Admin Operations]
+      tags: [Admin]
       security:
         - bearerAuth: []
       responses:
@@ -1317,49 +1226,8 @@ paths:
                 $ref: '#/components/schemas/Error'
   /api/admin/newProducts:
     post:
-      summary: Create a new product (Admin only)
-      description: |
-        Create a new product in the system. This endpoint is restricted to admin users only.
-        Accepts both JSON and multipart/form-data formats.
-        
-        Example using multipart/form-data:
-        ```bash
-        curl -X POST 'http://localhost:5000/api/admin/newProducts' \
-          -H 'Authorization: Bearer ADMIN_TOKEN' \
-          -F 'title=The Great Gatsby' \
-          -F 'author=F. Scott Fitzgerald' \
-          -F 'price=19.99' \
-          -F 'category=Fiction' \
-          -F 'isbn=978-0743273565' \
-          -F 'isDigital=false' \
-          -F 'isAudiobook=false' \
-          -F 'stock=100' \
-          -F 'image=@cover.jpg' \
-          -F 'file=@book.pdf'
-        ```
-        
-        Example using JSON:
-        ```json
-        {
-          "title": "The Great Gatsby",
-          "author": "F. Scott Fitzgerald",
-          "description": "A story of the fabulously wealthy Jay Gatsby",
-          "price": 19.99,
-          "stock": 100,
-          "category": "Fiction",
-          "isbn": "978-0743273565",
-          "isDigital": false,
-          "isAudiobook": false,
-          "seller": "admin"  // Admin can specify the seller
-        }
-        ```
-        
-        Note: As an admin, you can:
-        - Create products for any seller
-        - Set initial stock levels
-        - Upload both cover images and digital files
-        - Create any type of book (physical, digital, or audiobook)
-      tags: [Admin Operations]
+      summary: Create a new product
+      tags: [Admin]
       security:
         - bearerAuth: []
       requestBody:
@@ -1371,104 +1239,37 @@ paths:
               properties:
                 title:
                   type: string
-                  description: Title of the book
-                  example: "The Great Gatsby"
+                  example: The Great Gatsby
                 author:
                   type: string
-                  description: Author of the book
-                  example: "F. Scott Fitzgerald"
+                  example: F. Scott Fitzgerald
                 description:
                   type: string
-                  description: Detailed description of the book
-                  example: "A story of the fabulously wealthy Jay Gatsby"
                 price:
                   type: number
-                  description: Price of the book
                   example: 19.99
                 stock:
                   type: number
-                  description: Initial stock quantity for physical books
-                  example: 100
+                  example: 50
                 category:
                   type: string
                   enum: [Fiction, Non-Fiction, Science, History, Biography, Children, Fantasy, Mystery, Romance, Other]
-                  description: Category of the book
-                  example: "Fiction"
+                  example: Fiction
                 isbn:
                   type: string
-                  description: Book ISBN (10 or 13 digits)
-                  example: "978-0743273565"
+                  example: 978-0743273565
                 isDigital:
                   type: boolean
-                  description: Whether the book is digital
                   example: false
                 isAudiobook:
                   type: boolean
-                  description: Whether the book is an audiobook
                   example: false
-                seller:
-                  type: string
-                  description: ID of the seller. If not provided, defaults to the admin user
-                  example: "507f1f77bcf86cd799439011"
                 image:
                   type: string
                   format: binary
-                  description: Book cover image file. Optional but recommended.
                 file:
                   type: string
                   format: binary
-                  description: Digital book or audiobook file. Required for digital books and audiobooks.
-              required:
-                - title
-                - author
-                - price
-                - category
-                - isbn
-          application/json:
-            schema:
-              type: object
-              properties:
-                title:
-                  type: string
-                  description: Title of the book
-                  example: "The Great Gatsby"
-                author:
-                  type: string
-                  description: Author of the book
-                  example: "F. Scott Fitzgerald"
-                description:
-                  type: string
-                  description: Detailed description of the book
-                  example: "A story of the fabulously wealthy Jay Gatsby"
-                price:
-                  type: number
-                  description: Price of the book
-                  example: 19.99
-                stock:
-                  type: number
-                  description: Initial stock quantity for physical books
-                  example: 100
-                category:
-                  type: string
-                  enum: [Fiction, Non-Fiction, Science, History, Biography, Children, Fantasy, Mystery, Romance, Other]
-                  description: Category of the book
-                  example: "Fiction"
-                isbn:
-                  type: string
-                  description: Book ISBN (10 or 13 digits)
-                  example: "978-0743273565"
-                isDigital:
-                  type: boolean
-                  description: Whether the book is digital
-                  example: false
-                isAudiobook:
-                  type: boolean
-                  description: Whether the book is an audiobook
-                  example: false
-                seller:
-                  type: string
-                  description: ID of the seller. If not provided, defaults to the admin user
-                  example: "507f1f77bcf86cd799439011"
               required:
                 - title
                 - author
@@ -1477,7 +1278,7 @@ paths:
                 - isbn
       responses:
         '201':
-          description: Product created successfully
+          description: Product created
           content:
             application/json:
               schema:
@@ -1488,68 +1289,27 @@ paths:
                     example: true
                   data:
                     $ref: '#/components/schemas/Book'
-        '400':
-          description: Invalid input
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
         '401':
-          description: Unauthorized - Admin access required
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '403':
-          description: Forbidden - User is not an admin
+          description: Unauthorized
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
   /api/admin/products/{id}:
     put:
-      summary: Update a product (Admin only)
+      summary: Update a product
       description: |
-        Update any product's information. This endpoint is restricted to admin users only.
-        Only the fields you provide will be updated. All fields are optional.
-        Accepts both JSON and multipart/form-data formats.
+        Update a product. Only the fields you provide will be updated.
+        All fields are optional - you can update just the fields you want to change.
         
-        Example using multipart/form-data to update price and stock:
-        ```bash
-        curl -X PUT 'http://localhost:5000/api/admin/products/123' \
-          -H 'Authorization: Bearer ADMIN_TOKEN' \
-          -F 'price=29.99' \
-          -F 'stock=150'
-        ```
-        
-        Example using multipart/form-data to update with new images:
-        ```bash
-        curl -X PUT 'http://localhost:5000/api/admin/products/123' \
-          -H 'Authorization: Bearer ADMIN_TOKEN' \
-          -F 'title=Updated Title' \
-          -F 'description=New description' \
-          -F 'image=@new-cover.jpg' \
-          -F 'file=@updated-book.pdf'
-        ```
-        
-        Example using JSON to update multiple fields:
+        Example: To update just the price and stock:
         ```json
         {
-          "title": "Updated Book Title",
           "price": 29.99,
-          "stock": 150,
-          "category": "Mystery",
-          "seller": "507f1f77bcf86cd799439011"  // Admin can change the seller
+          "stock": 100
         }
         ```
-        
-        Note: As an admin, you can:
-        - Update any product regardless of the original seller
-        - Change the seller of a product
-        - Update all product details including stock levels
-        - Replace product images and digital files
-        - Modify product type (physical/digital/audiobook)
-      tags: [Admin Operations]
+      tags: [Admin]
       security:
         - bearerAuth: []
       parameters:
@@ -1568,98 +1328,39 @@ paths:
               properties:
                 title:
                   type: string
-                  description: Updated title of the book
-                  example: "Updated Book Title"
+                  description: Book title
                 author:
                   type: string
-                  description: Updated author of the book
-                  example: "Updated Author Name"
+                  description: Book author
                 description:
                   type: string
-                  description: Updated description of the book
-                  example: "Updated book description"
+                  description: Book description
                 price:
                   type: number
-                  description: Updated price of the book
-                  example: 29.99
+                  description: Book price
                 stock:
                   type: number
-                  description: Updated stock quantity for physical books
-                  example: 150
+                  description: Stock quantity for physical books
                 category:
                   type: string
                   enum: [Fiction, Non-Fiction, Science, History, Biography, Children, Fantasy, Mystery, Romance, Other]
-                  description: Updated category of the book
-                  example: "Mystery"
+                  description: Book category
                 isbn:
                   type: string
-                  description: Updated book ISBN (10 or 13 digits)
-                  example: "978-0743273565"
+                  description: Book ISBN
                 isDigital:
                   type: boolean
-                  description: Update whether the book is digital
-                  example: false
+                  description: Whether the book is digital
                 isAudiobook:
                   type: boolean
-                  description: Update whether the book is an audiobook
-                  example: false
-                seller:
-                  type: string
-                  description: Updated seller ID. Admin can change the seller of any product
-                  example: "507f1f77bcf86cd799439011"
+                  description: Whether the book is an audiobook
                 image:
                   type: string
                   format: binary
-                  description: New book cover image file
+                  description: Book cover image
                 file:
                   type: string
                   format: binary
-                  description: New digital book or audiobook file
-          application/json:
-            schema:
-              type: object
-              properties:
-                title:
-                  type: string
-                  description: Updated title of the book
-                  example: "Updated Book Title"
-                author:
-                  type: string
-                  description: Updated author of the book
-                  example: "Updated Author Name"
-                description:
-                  type: string
-                  description: Updated description of the book
-                  example: "Updated book description"
-                price:
-                  type: number
-                  description: Updated price of the book
-                  example: 29.99
-                stock:
-                  type: number
-                  description: Updated stock quantity for physical books
-                  example: 150
-                category:
-                  type: string
-                  enum: [Fiction, Non-Fiction, Science, History, Biography, Children, Fantasy, Mystery, Romance, Other]
-                  description: Updated category of the book
-                  example: "Mystery"
-                isbn:
-                  type: string
-                  description: Updated book ISBN (10 or 13 digits)
-                  example: "978-0743273565"
-                isDigital:
-                  type: boolean
-                  description: Update whether the book is digital
-                  example: false
-                isAudiobook:
-                  type: boolean
-                  description: Update whether the book is an audiobook
-                  example: false
-                seller:
-                  type: string
-                  description: Updated seller ID. Admin can change the seller of any product
-                  example: "507f1f77bcf86cd799439011"
       responses:
         '200':
           description: Product updated successfully
@@ -1673,20 +1374,8 @@ paths:
                     example: true
                   data:
                     $ref: '#/components/schemas/Book'
-        '400':
-          description: Invalid input
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
         '401':
-          description: Unauthorized - Admin access required
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '403':
-          description: Forbidden - User is not an admin
+          description: Unauthorized
           content:
             application/json:
               schema:
@@ -1698,17 +1387,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
     delete:
-      summary: Delete a product (Admin only)
-      description: |
-        Delete a product from the system. This endpoint is restricted to admin users only.
-        The product will be permanently removed from the database.
-        
-        Example:
-        ```bash
-        curl -X DELETE 'http://localhost:5000/api/admin/products/123' \
-          -H 'Authorization: Bearer ADMIN_TOKEN'
-        ```
-      tags: [Admin Operations]
+      summary: Delete a product
+      tags: [Admin]
       security:
         - bearerAuth: []
       parameters:
@@ -1720,7 +1400,7 @@ paths:
           description: Product ID
       responses:
         '200':
-          description: Product deleted successfully
+          description: Product deleted
           content:
             application/json:
               schema:
@@ -1729,23 +1409,11 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  message:
-                    type: string
-                    example: "Product deleted successfully"
+                  data:
+                    type: object
+                    example: {}
         '401':
-          description: Unauthorized - Admin access required
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '403':
-          description: Forbidden - User is not an admin
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Product not found
+          description: Unauthorized
           content:
             application/json:
               schema:
@@ -1763,7 +1431,7 @@ paths:
           "name": "New Admin Name"
         }
         ```
-      tags: [Admin Operations]
+      tags: [Admin]
       security:
         - bearerAuth: []
       requestBody:
@@ -1802,7 +1470,7 @@ paths:
   /api/admin/maintenance:
     put:
       summary: Toggle maintenance mode
-      tags: [Admin Operations]
+      tags: [Admin]
       security:
         - bearerAuth: []
       requestBody:
@@ -1977,7 +1645,7 @@ paths:
   /api/books/singleBook/{id}:
     get:
       summary: Get a single book by ID
-      tags: [Book Management]
+      tags: [Book]
       parameters:
         - in: path
           name: id
@@ -2007,7 +1675,7 @@ paths:
   /api/books/getBook/myBooks:
     get:
       summary: Get seller's books
-      tags: [Book Management]
+      tags: [Book]
       security:
         - bearerAuth: []
       responses:
@@ -2034,38 +1702,7 @@ paths:
   /api/books/createBook:
     post:
       summary: Create a new book
-      description: |
-        Create a new book with the provided details.
-        Accepts both JSON and multipart/form-data formats.
-        
-        Example using multipart/form-data:
-        ```bash
-        curl -X POST 'http://localhost:5000/api/books/createBook' \
-          -H 'Authorization: Bearer YOUR_TOKEN' \
-          -F 'title=The Great Gatsby' \
-          -F 'author=F. Scott Fitzgerald' \
-          -F 'price=19.99' \
-          -F 'category=Fiction' \
-          -F 'isbn=978-0743273565' \
-          -F 'image=@cover.jpg' \
-          -F 'file=@book.pdf'
-        ```
-        
-        Example using JSON:
-        ```json
-        {
-          "title": "The Great Gatsby",
-          "author": "F. Scott Fitzgerald",
-          "description": "A story of the fabulously wealthy Jay Gatsby",
-          "price": 19.99,
-          "stock": 50,
-          "category": "Fiction",
-          "isbn": "978-0743273565",
-          "isDigital": false,
-          "isAudiobook": false
-        }
-        ```
-      tags: [Book Management]
+      tags: [Book]
       security:
         - bearerAuth: []
       requestBody:
@@ -2077,96 +1714,37 @@ paths:
               properties:
                 title:
                   type: string
-                  description: Title of the book
-                  example: "The Great Gatsby"
+                  example: The Great Gatsby
                 author:
                   type: string
-                  description: Author of the book
-                  example: "F. Scott Fitzgerald"
+                  example: F. Scott Fitzgerald
                 description:
                   type: string
-                  description: Detailed description of the book
-                  example: "A story of the fabulously wealthy Jay Gatsby"
                 price:
                   type: number
-                  description: Price of the book
                   example: 19.99
                 stock:
                   type: number
-                  description: Stock quantity for physical books. Required only for physical books.
                   example: 50
                 category:
                   type: string
                   enum: [Fiction, Non-Fiction, Science, History, Biography, Children, Fantasy, Mystery, Romance, Other]
-                  description: Category of the book
-                  example: "Fiction"
+                  example: Fiction
                 isbn:
                   type: string
-                  description: Book ISBN (10 or 13 digits)
-                  example: "978-0743273565"
+                  example: 978-0743273565
                 isDigital:
                   type: boolean
-                  description: Whether the book is digital
                   example: false
                 isAudiobook:
                   type: boolean
-                  description: Whether the book is an audiobook
                   example: false
                 image:
                   type: string
                   format: binary
-                  description: Book cover image file. Optional but recommended.
                 file:
                   type: string
                   format: binary
-                  description: Digital book or audiobook file. Required for digital books and audiobooks.
-              required:
-                - title
-                - author
-                - price
-                - category
-                - isbn
-          application/json:
-            schema:
-              type: object
-              properties:
-                title:
-                  type: string
-                  description: Title of the book
-                  example: "The Great Gatsby"
-                author:
-                  type: string
-                  description: Author of the book
-                  example: "F. Scott Fitzgerald"
-                description:
-                  type: string
-                  description: Detailed description of the book
-                  example: "A story of the fabulously wealthy Jay Gatsby"
-                price:
-                  type: number
-                  description: Price of the book
-                  example: 19.99
-                stock:
-                  type: number
-                  description: Stock quantity for physical books. Required only for physical books.
-                  example: 50
-                category:
-                  type: string
-                  enum: [Fiction, Non-Fiction, Science, History, Biography, Children, Fantasy, Mystery, Romance, Other]
-                  description: Category of the book
-                  example: "Fiction"
-                isbn:
-                  type: string
-                  description: Book ISBN (10 or 13 digits)
-                  example: "978-0743273565"
-                isDigital:
-                  type: boolean
-                  description: Whether the book is digital
-                  example: false
-                isAudiobook:
-                  type: boolean
-                  description: Whether the book is an audiobook
-                  example: false
               required:
                 - title
                 - author
@@ -2175,7 +1753,7 @@ paths:
                 - isbn
       responses:
         '201':
-          description: Book created successfully
+          description: Book created
           content:
             application/json:
               schema:
@@ -2204,30 +1782,15 @@ paths:
       description: |
         Update a book's information. Only the fields you provide will be updated.
         All fields are optional - you can update just the fields you want to change.
-        Accepts both JSON and multipart/form-data formats.
         
-        Example using multipart/form-data to update just the price and cover image:
-        ```bash
-        curl -X PUT 'http://localhost:5000/api/books/updateBook/123' \
-          -H 'Authorization: Bearer YOUR_TOKEN' \
-          -F 'price=24.99' \
-          -F 'image=@new-cover.jpg'
-        ```
-        
-        Example using JSON to update multiple fields:
+        Example: To update just the price and description:
         ```json
         {
-          "title": "Updated Book Title",
           "price": 24.99,
-          "description": "Updated book description",
-          "stock": 75,
-          "category": "Mystery"
+          "description": "Updated book description"
         }
         ```
-        
-        Note: When updating a digital book or audiobook, you can provide a new file.
-        When updating a physical book, you can update the stock quantity.
-      tags: [Book Management]
+      tags: [Book]
       security:
         - bearerAuth: []
       parameters:
@@ -2246,90 +1809,40 @@ paths:
               properties:
                 title:
                   type: string
-                  description: Updated title of the book
-                  example: "Updated Book Title"
+                  description: Book title
                 author:
                   type: string
-                  description: Updated author of the book
-                  example: "Updated Author Name"
+                  description: Book author
                 description:
                   type: string
-                  description: Updated description of the book
-                  example: "Updated book description"
+                  description: Book description
                 price:
                   type: number
-                  description: Updated price of the book
-                  example: 24.99
+                  description: Book price
                 stock:
                   type: number
-                  description: Updated stock quantity for physical books
-                  example: 75
+                  description: Stock quantity for physical books
                 category:
                   type: string
                   enum: [Fiction, Non-Fiction, Science, History, Biography, Children, Fantasy, Mystery, Romance, Other]
-                  description: Updated category of the book
-                  example: "Mystery"
+                  description: Book category
                 isbn:
                   type: string
-                  description: Updated book ISBN (10 or 13 digits)
-                  example: "978-0743273565"
+                  description: Book ISBN
                 isDigital:
                   type: boolean
-                  description: Update whether the book is digital
-                  example: false
+                  description: Whether the book is digital
                 isAudiobook:
                   type: boolean
-                  description: Update whether the book is an audiobook
-                  example: false
+                  description: Whether the book is an audiobook
                 image:
                   type: string
                   format: binary
-                  description: New book cover image file
+                  description: Book cover image
                 file:
                   type: string
                   format: binary
-                  description: New digital book or audiobook file
-          application/json:
-            schema:
-              type: object
-              properties:
-                title:
-                  type: string
-                  description: Updated title of the book
-                  example: "Updated Book Title"
-                author:
-                  type: string
-                  description: Updated author of the book
-                  example: "Updated Author Name"
-                description:
-                  type: string
-                  description: Updated description of the book
-                  example: "Updated book description"
-                price:
-                  type: number
-                  description: Updated price of the book
-                  example: 24.99
-                stock:
-                  type: number
-                  description: Updated stock quantity for physical books
-                  example: 75
-                category:
-                  type: string
-                  enum: [Fiction, Non-Fiction, Science, History, Biography, Children, Fantasy, Mystery, Romance, Other]
-                  description: Updated category of the book
-                  example: "Mystery"
-                isbn:
-                  type: string
-                  description: Updated book ISBN (10 or 13 digits)
-                  example: "978-0743273565"
-                isDigital:
-                  type: boolean
-                  description: Update whether the book is digital
-                  example: false
-                isAudiobook:
-                  type: boolean
-                  description: Update whether the book is an audiobook
-                  example: false
+                  description: Digital book or audiobook file
       responses:
         '200':
           description: Book updated successfully
@@ -2343,12 +1856,6 @@ paths:
                     example: true
                   data:
                     $ref: '#/components/schemas/Book'
-        '400':
-          description: Invalid input
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
         '401':
           description: Unauthorized
           content:
@@ -2364,7 +1871,7 @@ paths:
   /api/books/deleteBook/{id}:
     delete:
       summary: Delete a book
-      tags: [Book Management]
+      tags: [Book]
       security:
         - bearerAuth: []
       parameters:
@@ -2403,7 +1910,7 @@ paths:
   /api/reviews/{bookId}/reviews:
     post:
       summary: Create a review for a book
-      tags: [Reviews & Ratings]
+      tags: [Review]
       security:
         - bearerAuth: []
       parameters:
@@ -2457,7 +1964,7 @@ paths:
                 $ref: '#/components/schemas/Error'
     get:
       summary: Get reviews for a book
-      tags: [Reviews & Ratings]
+      tags: [Review]
       parameters:
         - in: path
           name: bookId
@@ -2499,7 +2006,7 @@ paths:
           "rating": 4
         }
         ```
-      tags: [Reviews & Ratings]
+      tags: [Review]
       security:
         - bearerAuth: []
       parameters:
@@ -2557,7 +2064,7 @@ paths:
                 $ref: '#/components/schemas/Error'
     delete:
       summary: Delete a review
-      tags: [Reviews & Ratings]
+      tags: [Review]
       security:
         - bearerAuth: []
       parameters:
@@ -2602,7 +2109,7 @@ paths:
   /api/order/createOrder:
     post:
       summary: Create a new order
-      tags: [Order & Payment]
+      tags: [Order]
       security:
         - bearerAuth: []
       requestBody:
@@ -2649,7 +2156,7 @@ paths:
   /api/order/getOrder:
     get:
       summary: Get user's or seller's orders
-      tags: [Order & Payment]
+      tags: [Order]
       security:
         - bearerAuth: []
       responses:
@@ -2676,7 +2183,7 @@ paths:
   /api/order/getOrder/{id}:
     get:
       summary: Get a single order by ID
-      tags: [Order & Payment]
+      tags: [Order]
       security:
         - bearerAuth: []
       parameters:
@@ -2714,7 +2221,7 @@ paths:
   /api/order/updateOrder/{id}/status:
     put:
       summary: Update order status
-      tags: [Order & Payment]
+      tags: [Order]
       security:
         - bearerAuth: []
       parameters:
@@ -2765,7 +2272,7 @@ paths:
   /api/order/updateStatus/{id}/cancel:
     put:
       summary: Cancel an order
-      tags: [Order & Payment]
+      tags: [Order]
       security:
         - bearerAuth: []
       parameters:
@@ -2815,7 +2322,7 @@ paths:
   /api/order/deleteOrder/{id}:
     delete:
       summary: Delete an order
-      tags: [Order & Payment]
+      tags: [Order]
       security:
         - bearerAuth: []
       parameters:
@@ -2854,7 +2361,7 @@ paths:
   /api/order/reports:
     get:
       summary: Get order reports
-      tags: [Order & Payment]
+      tags: [Order]
       security:
         - bearerAuth: []
       responses:
@@ -2885,7 +2392,7 @@ paths:
     get:
       summary: Verify payment status
       description: Verify the status of a payment transaction
-      tags: [Order & Payment]
+      tags: [Order]
       parameters:
         - in: query
           name: tx_ref
@@ -2921,7 +2428,7 @@ paths:
   /api/order/payment-callback:
     get:
       summary: Handle payment callback from Chapa
-      tags: [Order & Payment]
+      tags: [Order]
       responses:
         '200':
           description: Payment callback processed
@@ -2940,7 +2447,7 @@ paths:
     get:
       summary: Payment success page
       description: Handle successful payment redirect
-      tags: [Order & Payment]
+      tags: [Order]
       parameters:
         - in: query
           name: tx_ref
@@ -2973,7 +2480,7 @@ paths:
   /api/order/stream/{bookId}:
     get:
       summary: Stream a digital book or audiobook
-      tags: [Order & Payment]
+      tags: [Order]
       security:
         - bearerAuth: []
       parameters:
@@ -3012,7 +2519,7 @@ paths:
   /api/user:
     post:
       summary: Create a new user
-      tags: [User Management]
+      tags: [User]
       requestBody:
         required: true
         content:
@@ -3060,7 +2567,7 @@ paths:
                 $ref: '#/components/schemas/Error'
     get:
       summary: Get all users
-      tags: [User Management]
+      tags: [User]
       responses:
         '200':
           description: List of users
@@ -3085,7 +2592,7 @@ paths:
   /api/user/{id}:
     get:
       summary: Get a user by ID
-      tags: [User Management]
+      tags: [User]
       parameters:
         - in: path
           name: id
@@ -3114,7 +2621,7 @@ paths:
                 $ref: '#/components/schemas/Error'
     put:
       summary: Update a user
-      tags: [User Management]
+      tags: [User]
       security:
         - bearerAuth: []
       parameters:
@@ -3175,7 +2682,7 @@ paths:
                 $ref: '#/components/schemas/Error'
     delete:
       summary: Delete a user
-      tags: [User Management]
+      tags: [User]
       security:
         - bearerAuth: []
       parameters:
@@ -3214,7 +2721,7 @@ paths:
   /api/user/library:
     get:
       summary: Get user's library
-      tags: [User Management]
+      tags: [User]
       security:
         - bearerAuth: []
       responses:
@@ -3238,6 +2745,87 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /api/webhook/chapa:
+    post:
+      summary: Handle Chapa payment webhook
+      description: Webhook endpoint for Chapa payment notifications
+      tags: [Webhook]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                event:
+                  type: string
+                  example: payment.succeeded
+                data:
+                  type: object
+                  properties:
+                    tx_ref:
+                      type: string
+                    status:
+                      type: string
+                    amount:
+                      type: number
+                    currency:
+                      type: string
+                    customer:
+                      type: object
+                      properties:
+                        email:
+                          type: string
+                        name:
+                          type: string
+      responses:
+        '200':
+          description: Webhook processed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Webhook processed successfully
+        '400':
+          description: Invalid webhook data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/books/most-sold:
+    get:
+      summary: Get most sold books
+      description: Retrieve a list of the most sold books
+      responses:
+        '200':
+          description: List of most sold books
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    _id:
+                      type: string
+                    title:
+                      type: string
+                    author:
+                      type: string
+                    price:
+                      type: number
+                    totalSold:
+                      type: number
+                    isDigital:
+                      type: boolean
+                    isAudiobook:
+                      type: boolean
   /api/users/notifications:
     get:
       summary: Get user notifications
@@ -3268,7 +2856,7 @@ paths:
     get:
       summary: Get seller dashboard overview
       description: Retrieve seller's dashboard data including sales statistics, recent orders, and inventory status
-      tags: [Admin Operations]
+      tags: [Seller]
       security:
         - bearerAuth: []
       responses:
@@ -3325,7 +2913,8 @@ paths:
                 $ref: '#/components/schemas/Error'
   /interactions/view:
     post:
-      tags: [Analytics & Interactions]
+      tags:
+        - Interactions
       summary: Record a book view
       security:
         - cookieAuth: []
@@ -3362,7 +2951,8 @@ paths:
                 $ref: '#/components/schemas/Error'
   /interactions/rate:
     post:
-      tags: [Analytics & Interactions]
+      tags:
+        - Interactions
       summary: Record a book rating
       security:
         - cookieAuth: []
@@ -3405,7 +2995,8 @@ paths:
                 $ref: '#/components/schemas/Error'
   /interactions/time:
     post:
-      tags: [Analytics & Interactions]
+      tags:
+        - Interactions
       summary: Record time spent on a book
       security:
         - cookieAuth: []
@@ -3447,7 +3038,8 @@ paths:
                 $ref: '#/components/schemas/Error'
   /interactions/history:
     get:
-      tags: [Analytics & Interactions]
+      tags:
+        - Interactions
       summary: Get user's interaction history
       security:
         - cookieAuth: []
@@ -3474,7 +3066,8 @@ paths:
                 $ref: '#/components/schemas/Error'
   /interactions/recommendations:
     get:
-      tags: [Analytics & Interactions]
+      tags:
+        - Interactions
       summary: Get personalized book recommendations
       security:
         - cookieAuth: []
@@ -3523,7 +3116,8 @@ paths:
                 $ref: '#/components/schemas/Error'
   /api/wishlist:
     post:
-      tags: [Cart & Wishlist]
+      tags:
+        - Wishlist
       summary: Add a book to wishlist
       security:
         - bearerAuth: []
@@ -3547,7 +3141,8 @@ paths:
         '404':
           description: Book not found
     get:
-      tags: [Cart & Wishlist]
+      tags:
+        - Wishlist
       summary: Get user's wishlist
       security:
         - bearerAuth: []
@@ -3565,7 +3160,8 @@ paths:
 
   /api/wishlist/{id}:
     delete:
-      tags: [Cart & Wishlist]
+      tags:
+        - Wishlist
       summary: Remove a book from wishlist
       security:
         - bearerAuth: []
@@ -3584,7 +3180,8 @@ paths:
 
   /api/wishlist/{id}/cart:
     post:
-      tags: [Cart & Wishlist]
+      tags:
+        - Wishlist
       summary: Add wishlist item to cart
       security:
         - bearerAuth: []
@@ -3623,7 +3220,8 @@ paths:
 
   /api/users/me:
     get:
-      tags: [User Management]
+      tags:
+        - User Profile
       summary: Get current user's profile
       security:
         - bearerAuth: []
@@ -3639,7 +3237,8 @@ paths:
         '404':
           $ref: '#/components/responses/NotFoundError'
     put:
-      tags: [User Management]
+      tags:
+        - User Profile
       summary: Update current user's profile
       security:
         - bearerAuth: []
@@ -3685,7 +3284,8 @@ paths:
         '404':
           $ref: '#/components/responses/NotFoundError'
     delete:
-      tags: [User Management]
+      tags:
+        - User Profile
       summary: Delete current user's account
       security:
         - bearerAuth: []
@@ -3716,7 +3316,8 @@ paths:
 
   /api/users/me/image:
     put:
-      tags: [User Management]
+      tags:
+        - User Profile
       summary: Update user's profile image
       security:
         - bearerAuth: []
@@ -3746,7 +3347,8 @@ paths:
 
   /api/users/me/orders:
     get:
-      tags: [User Management]
+      tags:
+        - User Profile
       summary: Get user's order history
       security:
         - bearerAuth: []
@@ -3774,7 +3376,8 @@ paths:
 
   /api/users/me/wishlist:
     get:
-      tags: [User Management]
+      tags:
+        - User Profile
       summary: Get user's wishlist
       security:
         - bearerAuth: []
@@ -3792,7 +3395,8 @@ paths:
 
   /api/users/me/reading-history:
     get:
-      tags: [User Management]
+      tags:
+        - User Profile
       summary: Get user's reading history
       security:
         - bearerAuth: []
@@ -3821,47 +3425,8 @@ paths:
   /api/bookshop:
     post:
       summary: Create a new bookshop
-      description: |
-        Create a new bookshop with the provided details.
-        Accepts both JSON and multipart/form-data formats.
-        
-        Example using multipart/form-data:
-        ```bash
-        curl -X POST 'http://localhost:5000/api/bookshop' \
-          -H 'Authorization: Bearer YOUR_TOKEN' \
-          -F 'name=Book Haven' \
-          -F 'contactPhone=+251912345678' \
-          -F 'location=https://maps.google.com/?q=8.5670,39.2894' \
-          -F 'logo=@logo.jpg' \
-          -F 'background=@background.jpg'
-        ```
-        
-        Example using JSON:
-        ```json
-        {
-          "name": "Book Haven",
-          "contactPhone": "+251912345678",
-          "location": "https://maps.google.com/?q=8.5670,39.2894",
-          "tagline": "Your Literary Sanctuary",
-          "description": "A cozy bookstore with a wide selection of books",
-          "services": "Café,Reading Area,Free Wi-Fi",
-          "contactEmail": "contact@bookhaven.com",
-          "contactWebsite": "https://bookhaven.com",
-          "paymentProviders": "Telebirr,CBE Birr,Amole",
-          "paymentPhoneNumbers": "0912345678,0923456789,0934567890",
-          "mondayHours": "9:00 AM - 5:00 PM",
-          "tuesdayHours": "9:00 AM - 5:00 PM",
-          "wednesdayHours": "9:00 AM - 5:00 PM",
-          "thursdayHours": "9:00 AM - 5:00 PM",
-          "fridayHours": "9:00 AM - 5:00 PM",
-          "saturdayHours": "10:00 AM - 4:00 PM",
-          "sundayHours": "Closed",
-          "facebookUrl": "https://facebook.com/bookhaven",
-          "instagramUrl": "https://instagram.com/bookhaven",
-          "twitterUrl": "https://twitter.com/bookhaven"
-        }
-        ```
-      tags: [Bookshop Management]
+      description: Create a new bookshop with the provided details
+      tags: [BookShop]
       security:
         - bearerAuth: []
       requestBody:
@@ -3873,110 +3438,41 @@ paths:
               properties:
                 name:
                   type: string
-                  description: Name of the bookshop
-                  example: "Book Haven"
                 tagline:
                   type: string
-                  description: Short tagline for the bookshop
-                  example: "Your Literary Sanctuary"
                 description:
                   type: string
-                  description: Detailed description of the bookshop
-                  example: "A cozy bookstore with a wide selection of books"
                 services:
-                  type: string
-                  description: Comma-separated list of services. Optional.
-                  example: "Café,Reading Area,Free Wi-Fi"
-                contactPhone:
-                  type: string
-                  description: Business phone number
-                  example: "+251912345678"
-                contactEmail:
-                  type: string
-                  format: email
-                  description: Business email address. Optional.
-                  example: "contact@bookhaven.com"
-                contactWebsite:
-                  type: string
-                  format: uri
-                  description: Bookshop website URL. Optional.
-                  example: "https://bookhaven.com"
-                paymentProviders:
-                  type: string
-                  description: Comma-separated list of payment providers. Optional.
-                  example: "Telebirr,CBE Birr,Amole"
-                paymentPhoneNumbers:
-                  type: string
-                  description: Comma-separated list of payment phone numbers. Must match providers if provided.
-                  example: "0912345678,0923456789,0934567890"
-                mondayHours:
-                  type: string
-                  description: Monday operating hours. Optional, defaults to "9:00 AM - 5:00 PM"
-                  example: "9:00 AM - 5:00 PM"
-                tuesdayHours:
-                  type: string
-                  description: Tuesday operating hours. Optional, defaults to "9:00 AM - 5:00 PM"
-                  example: "9:00 AM - 5:00 PM"
-                wednesdayHours:
-                  type: string
-                  description: Wednesday operating hours. Optional, defaults to "9:00 AM - 5:00 PM"
-                  example: "9:00 AM - 5:00 PM"
-                thursdayHours:
-                  type: string
-                  description: Thursday operating hours. Optional, defaults to "9:00 AM - 5:00 PM"
-                  example: "9:00 AM - 5:00 PM"
-                fridayHours:
-                  type: string
-                  description: Friday operating hours. Optional, defaults to "9:00 AM - 5:00 PM"
-                  example: "9:00 AM - 5:00 PM"
-                saturdayHours:
-                  type: string
-                  description: Saturday operating hours. Optional, defaults to "10:00 AM - 4:00 PM"
-                  example: "10:00 AM - 4:00 PM"
-                sundayHours:
-                  type: string
-                  description: Sunday operating hours. Optional, defaults to "Closed"
-                  example: "Closed"
-                facebookUrl:
-                  type: string
-                  format: uri
-                  description: Facebook page URL. Optional.
-                  example: "https://facebook.com/bookhaven"
-                instagramUrl:
-                  type: string
-                  format: uri
-                  description: Instagram profile URL. Optional.
-                  example: "https://instagram.com/bookhaven"
-                twitterUrl:
-                  type: string
-                  format: uri
-                  description: Twitter profile URL. Optional.
-                  example: "https://twitter.com/bookhaven"
+                  type: array
+                  items:
+                    type: string
+                contact:
+                  type: object
+                paymentOptions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      provider:
+                        type: string
+                        enum: ["Telebirr", "CBE Birr", "Amole", "HelloCash", "E-Birr"]
+                      phoneNumber:
+                        type: string
+                        pattern: '^\d{10}$'
+                operatingHours:
+                  type: object
+                socialMedia:
+                  type: object
+                upcomingEvents:
+                  type: array
                 location:
-                  type: string
-                  description: |
-                    Bookshop location. Can be provided in two ways:
-                    1. Google Maps URL (e.g., "https://maps.google.com/?q=8.5670,39.2894")
-                    2. Coordinates in "latitude,longitude" format (e.g., "8.5670,39.2894")
-                    The frontend will handle this by either:
-                    - Using the browser's geolocation API when user clicks "Use My Location"
-                    - Accepting a Google Maps URL when user pastes it manually
-                  example: "https://maps.google.com/?q=8.5670,39.2894"
+                  type: object
                 logo:
                   type: string
                   format: binary
-                  description: Bookshop logo image file. Optional.
                 background:
                   type: string
                   format: binary
-                  description: Bookshop background image file. Optional.
-              required:
-                - name
-                - contactPhone
-                - location
-          application/json:
-            schema:
-              $ref: '#/components/schemas/BookShopCreate'
       responses:
         '201':
           description: Bookshop created successfully
@@ -4006,7 +3502,7 @@ paths:
   /api/bookshop/{id}:
     get:
       summary: Get bookshop details
-      tags: [Bookshop Management]
+      tags: [BookShop]
       parameters:
         - in: path
           name: id
@@ -4033,9 +3529,207 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+
+  /api/bookshop/my-shop:
+    get:
+      summary: Get seller's bookshop
+      tags: [BookShop]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Seller's bookshop details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/BookShop'
+        '404':
+          description: No bookshop found for this seller
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/bookshop/{id}/reviews:
+    post:
+      summary: Create a review for a bookshop
+      tags: [BookShop]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Bookshop ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rating:
+                  type: number
+                  minimum: 1
+                  maximum: 5
+                comment:
+                  type: string
+              required:
+                - rating
+      responses:
+        '201':
+          description: Review created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/BookShopReview'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      summary: Get reviews for a bookshop
+      tags: [BookShop]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Bookshop ID
+      responses:
+        '200':
+          description: List of bookshop reviews
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BookShopReview'
+
+  /api/bookshop/nearby:
+    get:
+      summary: Get nearby bookshops
+      tags: [BookShop]
+      parameters:
+        - in: query
+          name: longitude
+          required: true
+          schema:
+            type: number
+          description: User's longitude
+        - in: query
+          name: latitude
+          required: true
+          schema:
+            type: number
+          description: User's latitude
+        - in: query
+          name: radius
+          schema:
+            type: number
+            default: 10
+          description: Search radius in kilometers
+      responses:
+        '200':
+          description: List of nearby bookshops
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  count:
+                    type: number
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BookShop'
+
+  /api/bookshop/search:
+    get:
+      summary: Search bookshops
+      tags: [BookShop]
+      parameters:
+        - in: query
+          name: longitude
+          schema:
+            type: number
+          description: User's longitude
+        - in: query
+          name: latitude
+          schema:
+            type: number
+          description: User's latitude
+        - in: query
+          name: radius
+          schema:
+            type: number
+            default: 10
+          description: Search radius in kilometers
+        - in: query
+          name: services
+          schema:
+            type: string
+          description: Comma-separated list of services
+        - in: query
+          name: minRating
+          schema:
+            type: number
+            minimum: 0
+            maximum: 5
+          description: Minimum rating filter
+        - in: query
+          name: category
+          schema:
+            type: string
+          description: Book category filter
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  count:
+                    type: number
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BookShop'
+
+  /api/bookshop/{id}:
     put:
       summary: Update bookshop details
-      tags: [Bookshop Management]
+      tags: [BookShop]
       security:
         - bearerAuth: []
       parameters:
@@ -4098,207 +3792,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /api/bookshop/my-shop:
-    get:
-      summary: Get seller's bookshop
-      tags: [Bookshop Management]
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Seller's bookshop details
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: true
-                  data:
-                    $ref: '#/components/schemas/BookShop'
-        '404':
-          description: No bookshop found for this seller
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /api/bookshop/{id}/reviews:
-    post:
-      summary: Create a review for a bookshop
-      tags: [Reviews & Ratings]
-      security:
-        - bearerAuth: []
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
-          description: Bookshop ID
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                rating:
-                  type: number
-                  minimum: 1
-                  maximum: 5
-                comment:
-                  type: string
-              required:
-                - rating
-      responses:
-        '201':
-          description: Review created successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: true
-                  data:
-                    $ref: '#/components/schemas/BookShopReview'
-        '400':
-          description: Invalid input
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-    get:
-      summary: Get reviews for a bookshop
-      tags: [Reviews & Ratings]
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
-          description: Bookshop ID
-      responses:
-        '200':
-          description: List of bookshop reviews
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: true
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/BookShopReview'
-
-  /api/bookshop/nearby:
-    get:
-      summary: Get nearby bookshops
-      tags: [Bookshop Management]
-      parameters:
-        - in: query
-          name: longitude
-          required: true
-          schema:
-            type: number
-          description: User's longitude
-        - in: query
-          name: latitude
-          required: true
-          schema:
-            type: number
-          description: User's latitude
-        - in: query
-          name: radius
-          schema:
-            type: number
-            default: 10
-          description: Search radius in kilometers
-      responses:
-        '200':
-          description: List of nearby bookshops
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: true
-                  count:
-                    type: number
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/BookShop'
-
-  /api/bookshop/search:
-    get:
-      summary: Search bookshops
-      tags: [Bookshop Management]
-      parameters:
-        - in: query
-          name: longitude
-          schema:
-            type: number
-          description: User's longitude
-        - in: query
-          name: latitude
-          schema:
-            type: number
-          description: User's latitude
-        - in: query
-          name: radius
-          schema:
-            type: number
-            default: 10
-          description: Search radius in kilometers
-        - in: query
-          name: services
-          schema:
-            type: string
-          description: Comma-separated list of services
-        - in: query
-          name: minRating
-          schema:
-            type: number
-            minimum: 0
-            maximum: 5
-          description: Minimum rating filter
-        - in: query
-          name: category
-          schema:
-            type: string
-          description: Book category filter
-      responses:
-        '200':
-          description: Search results
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: true
-                  count:
-                    type: number
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/BookShop'
-
   /api/bookshop/shopList:
     get:
       summary: Get all bookshops
       description: Retrieve a list of all bookshops with their basic information, seller details, and available books
-      tags: [Bookshop Management]
+      tags: [BookShop]
       responses:
         '200':
           description: List of bookshops retrieved successfully
@@ -4327,171 +3825,134 @@ paths:
 
   /api/bookshop/update-fields:
     patch:
-      summary: Update bookshop fields
+      summary: Update specific bookshop fields
       description: |
         Update your bookshop information. Only the fields you provide will be updated.
         All fields are optional - you can update just the fields you want to change.
-        Accepts both JSON and multipart/form-data formats.
         
-        Example using multipart/form-data to update basic info and images:
-        ```bash
-        curl -X PATCH 'http://localhost:5000/api/bookshop/update-fields' \
-          -H 'Authorization: Bearer YOUR_TOKEN' \
-          -F 'name=New Bookshop Name' \
-          -F 'tagline=Your New Tagline' \
-          -F 'description=Updated description' \
-          -F 'logo=@new-logo.jpg' \
-          -F 'background=@new-background.jpg'
-        ```
-        
-        Example using multipart/form-data to update hours and contact:
-        ```bash
-        curl -X PATCH 'http://localhost:5000/api/bookshop/update-fields' \
-          -H 'Authorization: Bearer YOUR_TOKEN' \
-          -F 'mondayHours=8:00 AM - 6:00 PM' \
-          -F 'tuesdayHours=8:00 AM - 6:00 PM' \
-          -F 'contactPhone=+251912345678' \
-          -F 'contactEmail=new@bookshop.com'
-        ```
-        
-        Example using JSON to update multiple fields:
+        Example: To update just the name and phone number:
         ```json
         {
           "name": "New Bookshop Name",
-          "tagline": "Your New Tagline",
-          "description": "Updated description of the bookshop",
-          "services": "Café,Reading Area,Free Wi-Fi",
-          "contactPhone": "+251912345678",
-          "contactEmail": "new@bookshop.com",
-          "contactWebsite": "https://new-bookshop.com",
-          "paymentProviders": "Telebirr,CBE Birr,Amole",
-          "paymentPhoneNumbers": "0912345678,0923456789,0934567890",
-          "mondayHours": "8:00 AM - 6:00 PM",
-          "tuesdayHours": "8:00 AM - 6:00 PM",
-          "wednesdayHours": "8:00 AM - 6:00 PM",
-          "thursdayHours": "8:00 AM - 6:00 PM",
-          "fridayHours": "8:00 AM - 6:00 PM",
-          "saturdayHours": "9:00 AM - 5:00 PM",
-          "sundayHours": "Closed",
-          "facebookUrl": "https://facebook.com/new-bookshop",
-          "instagramUrl": "https://instagram.com/new-bookshop",
-          "twitterUrl": "https://twitter.com/new-bookshop",
-          "location": "https://maps.google.com/?q=8.5670,39.2894"
+          "contact": {
+            "phoneNumber": "+1234567890"
+          }
         }
         ```
-        
-        Note: When updating location, you can provide either:
-        1. A Google Maps URL (e.g., "https://maps.google.com/?q=8.5670,39.2894")
-        2. Coordinates in "latitude,longitude" format (e.g., "8.5670,39.2894")
-      tags: [Bookshop Management]
+      tags: [BookShop]
       security:
         - bearerAuth: []
       requestBody:
         required: true
         content:
-          multipart/form-data:
+          application/json:
             schema:
               type: object
+              title: Bookshop Update Form
+              description: Fill in only the fields you want to update
               properties:
                 name:
                   type: string
-                  description: Updated name of the bookshop
-                  example: "New Bookshop Name"
+                  description: The name of your bookshop
+                  example: "Book Haven"
                 tagline:
                   type: string
-                  description: Updated tagline for the bookshop
-                  example: "Your New Tagline"
+                  description: A short tagline for your bookshop
+                  example: "Your Literary Sanctuary"
                 description:
                   type: string
-                  description: Updated detailed description
-                  example: "Updated description of the bookshop"
+                  description: Detailed description of your bookshop
+                  example: "A cozy bookstore with a wide selection of books"
                 services:
-                  type: string
-                  description: Comma-separated list of services
-                  example: "Café,Reading Area,Free Wi-Fi"
-                contactPhone:
-                  type: string
-                  description: Updated business phone number
-                  example: "+251912345678"
-                contactEmail:
-                  type: string
-                  format: email
-                  description: Updated business email address
-                  example: "new@bookshop.com"
-                contactWebsite:
-                  type: string
-                  format: uri
-                  description: Updated bookshop website URL
-                  example: "https://new-bookshop.com"
-                paymentProviders:
-                  type: string
-                  description: Comma-separated list of payment providers
-                  example: "Telebirr,CBE Birr,Amole"
-                paymentPhoneNumbers:
-                  type: string
-                  description: Comma-separated list of payment phone numbers
-                  example: "0912345678,0923456789,0934567890"
-                mondayHours:
-                  type: string
-                  description: Updated Monday operating hours
-                  example: "8:00 AM - 6:00 PM"
-                tuesdayHours:
-                  type: string
-                  description: Updated Tuesday operating hours
-                  example: "8:00 AM - 6:00 PM"
-                wednesdayHours:
-                  type: string
-                  description: Updated Wednesday operating hours
-                  example: "8:00 AM - 6:00 PM"
-                thursdayHours:
-                  type: string
-                  description: Updated Thursday operating hours
-                  example: "8:00 AM - 6:00 PM"
-                fridayHours:
-                  type: string
-                  description: Updated Friday operating hours
-                  example: "8:00 AM - 6:00 PM"
-                saturdayHours:
-                  type: string
-                  description: Updated Saturday operating hours
-                  example: "9:00 AM - 5:00 PM"
-                sundayHours:
-                  type: string
-                  description: Updated Sunday operating hours
-                  example: "Closed"
-                facebookUrl:
-                  type: string
-                  format: uri
-                  description: Updated Facebook page URL
-                  example: "https://facebook.com/new-bookshop"
-                instagramUrl:
-                  type: string
-                  format: uri
-                  description: Updated Instagram profile URL
-                  example: "https://instagram.com/new-bookshop"
-                twitterUrl:
-                  type: string
-                  format: uri
-                  description: Updated Twitter profile URL
-                  example: "https://twitter.com/new-bookshop"
+                  type: array
+                  description: Select the services you offer
+                  items:
+                    type: string
+                    enum: ["Café", "Reading Area", "Author Events", "Children's Corner", "Free Wi-Fi", "Book Club", "Other"]
+                  example: ["Café", "Reading Area", "Free Wi-Fi"]
+                contact:
+                  type: object
+                  description: Your contact information
+                  properties:
+                    phoneNumber:
+                      type: string
+                      description: Your business phone number
+                      example: "+1234567890"
+                    email:
+                      type: string
+                      format: email
+                      description: Your business email
+                      example: "contact@bookhaven.com"
+                    website:
+                      type: string
+                      format: uri
+                      description: Your bookshop website
+                      example: "https://bookhaven.com"
+                operatingHours:
+                  type: object
+                  description: Your business hours
+                  properties:
+                    monday:
+                      type: string
+                      description: Monday hours
+                      example: "9:00 AM - 5:00 PM"
+                    tuesday:
+                      type: string
+                      description: Tuesday hours
+                      example: "9:00 AM - 5:00 PM"
+                    wednesday:
+                      type: string
+                      description: Wednesday hours
+                      example: "9:00 AM - 5:00 PM"
+                    thursday:
+                      type: string
+                      description: Thursday hours
+                      example: "9:00 AM - 5:00 PM"
+                    friday:
+                      type: string
+                      description: Friday hours
+                      example: "9:00 AM - 5:00 PM"
+                    saturday:
+                      type: string
+                      description: Saturday hours
+                      example: "10:00 AM - 4:00 PM"
+                    sunday:
+                      type: string
+                      description: Sunday hours
+                      example: "Closed"
+                socialMedia:
+                  type: object
+                  description: Your social media links
+                  properties:
+                    facebook:
+                      type: string
+                      format: uri
+                      description: Facebook page URL
+                      example: "https://facebook.com/bookhaven"
+                    instagram:
+                      type: string
+                      format: uri
+                      description: Instagram profile URL
+                      example: "https://instagram.com/bookhaven"
+                    twitter:
+                      type: string
+                      format: uri
+                      description: Twitter profile URL
+                      example: "https://twitter.com/bookhaven"
                 location:
-                  type: string
-                  description: |
-                    Updated bookshop location. Can be provided in two ways:
-                    1. Google Maps URL (e.g., "https://maps.google.com/?q=8.5670,39.2894")
-                    2. Coordinates in "latitude,longitude" format (e.g., "8.5670,39.2894")
-                  example: "https://maps.google.com/?q=8.5670,39.2894"
-                logo:
-                  type: string
-                  format: binary
-                  description: New bookshop logo image file
-                background:
-                  type: string
-                  format: binary
-                  description: New bookshop background image file
-          application/json:
-            schema:
-              $ref: '#/components/schemas/BookShopCreate'
+                  type: object
+                  description: Your bookshop location
+                  properties:
+                    address:
+                      type: string
+                      description: Your business address
+                      example: "123 Book Street, New York, NY"
+                    coordinates:
+                      type: array
+                      description: Your location coordinates [longitude, latitude]
+                      items:
+                        type: number
+                      example: [-73.935242, 40.730610]
       responses:
         '200':
           description: Bookshop updated successfully
@@ -4509,7 +3970,7 @@ paths:
                   data:
                     $ref: '#/components/schemas/BookShop'
         '400':
-          description: Invalid input
+          description: Error updating bookshop
           content:
             application/json:
               schema:
