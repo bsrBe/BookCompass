@@ -14,8 +14,6 @@ const createReview = async (req, res) => {
 
     // 1️⃣ Find the book
     const book = await Book.findById(bookId);
-    console.log("Book before update:", book);
-
     if (!book) {
       return res.status(404).json({ message: "Book not found" });
     }
@@ -38,11 +36,14 @@ const createReview = async (req, res) => {
 
     // 4️⃣ Update book's numReviews and averageRating
     const reviews = await Review.find({ book: bookId });
-    book.numReviews = reviews.length;
-    book.averageRating =
-      reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length;
+    const totalRating = reviews.reduce((acc, review) => acc + review.rating, 0);
+    const averageRating = reviews.length > 0 ? totalRating / reviews.length : 0;
 
-    await book.save();
+    // Update only the rating-related fields
+    await Book.findByIdAndUpdate(bookId, {
+      numReviews: reviews.length,
+      averageRating: averageRating
+    });
 
     res.status(201).json({ message: "Review added successfully", review });
   } catch (error) {
