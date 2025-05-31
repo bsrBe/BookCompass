@@ -235,9 +235,16 @@ const createBook = async (req, res) => {
         return res.status(400).json({ error: "Stock is required for physical books and must be a non-negative number" });
       }
 
+      // Handle image upload for physical books
       if (req.files && req.files.image) {
         const imageFile = req.files.image[0];
-        imageUrl = await uploadImage(imageFile.buffer);
+        try {
+          imageUrl = await uploadImage(imageFile.buffer, "book_images");
+          console.log("Uploaded image URL:", imageUrl); // Debug log
+        } catch (uploadError) {
+          console.error("Image upload error:", uploadError);
+          return res.status(400).json({ error: "Failed to upload image" });
+        }
       }
     }
 
@@ -250,14 +257,21 @@ const createBook = async (req, res) => {
       category,
       imageUrl,
       seller: sellerId,
-      shop: bookShop._id, // Automatically add the bookshop ID
+      shop: bookShop._id,
       isbn,
       isDigital: isDigitalBook,
       isAudiobook: isAudiobookBook,
       fileUrl: isDigitalBook || isAudiobookBook ? fileUrl : undefined,
     });
 
-    return res.status(201).json({ success: true, data: newBook });
+    // Return the complete book data including the actual imageUrl
+    return res.status(201).json({ 
+      success: true, 
+      data: {
+        ...newBook.toObject(),
+        imageUrl: imageUrl // Ensure we return the actual uploaded image URL
+      }
+    });
   } catch (error) {
     console.error("Error creating book:", error);
     res.status(400).json({ error: error.message });

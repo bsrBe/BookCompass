@@ -467,14 +467,22 @@ components:
             type:
               type: string
               enum: ['Point']
+              description: Type of the location object
             coordinates:
               type: array
               items:
                 type: number
               minItems: 2
               maxItems: 2
+              description: Array of [longitude, latitude] coordinates
             address:
               type: string
+              description: Physical address of the bookshop
+              example: "123 Main Street, Addis Ababa, Ethiopia"
+          required:
+            - type
+            - coordinates
+            - address
         averageRating:
           type: number
           minimum: 0
@@ -593,15 +601,27 @@ components:
           description: Twitter profile URL. Optional.
           example: "https://twitter.com/bookhaven"
         location:
-          type: string
-          description: |
-            Bookshop location. Can be provided in two ways:
-            1. Google Maps URL (e.g., "https://maps.google.com/?q=8.5670,39.2894")
-            2. Coordinates in "latitude,longitude" format (e.g., "8.5670,39.2894")
-            The frontend will handle this by either:
-            - Using the browser's geolocation API when user clicks "Use My Location"
-            - Accepting a Google Maps URL when user pastes it manually
-          example: "https://maps.google.com/?q=8.5670,39.2894"
+          type: object
+          properties:
+            type:
+              type: string
+              enum: ['Point']
+              description: Type of the location object
+            coordinates:
+              type: array
+              items:
+                type: number
+              minItems: 2
+              maxItems: 2
+              description: Array of [longitude, latitude] coordinates
+            address:
+              type: string
+              description: Physical address of the bookshop
+              example: "123 Main Street, Addis Ababa, Ethiopia"
+          required:
+            - type
+            - coordinates
+            - address
       required:
         - name
         - contactPhone
@@ -3832,34 +3852,9 @@ paths:
           -F 'name=Book Haven' \
           -F 'contactPhone=+251912345678' \
           -F 'location=https://maps.google.com/?q=8.5670,39.2894' \
+          -F 'address=123 Main Street, Addis Ababa, Ethiopia' \
           -F 'logo=@logo.jpg' \
           -F 'background=@background.jpg'
-        ```
-        
-        Example using JSON:
-        ```json
-        {
-          "name": "Book Haven",
-          "contactPhone": "+251912345678",
-          "location": "https://maps.google.com/?q=8.5670,39.2894",
-          "tagline": "Your Literary Sanctuary",
-          "description": "A cozy bookstore with a wide selection of books",
-          "services": "Café,Reading Area,Free Wi-Fi",
-          "contactEmail": "contact@bookhaven.com",
-          "contactWebsite": "https://bookhaven.com",
-          "paymentProviders": "Telebirr,CBE Birr,Amole",
-          "paymentPhoneNumbers": "0912345678,0923456789,0934567890",
-          "mondayHours": "9:00 AM - 5:00 PM",
-          "tuesdayHours": "9:00 AM - 5:00 PM",
-          "wednesdayHours": "9:00 AM - 5:00 PM",
-          "thursdayHours": "9:00 AM - 5:00 PM",
-          "fridayHours": "9:00 AM - 5:00 PM",
-          "saturdayHours": "10:00 AM - 4:00 PM",
-          "sundayHours": "Closed",
-          "facebookUrl": "https://facebook.com/bookhaven",
-          "instagramUrl": "https://instagram.com/bookhaven",
-          "twitterUrl": "https://twitter.com/bookhaven"
-        }
         ```
       tags: [Bookshop Management]
       security:
@@ -3962,6 +3957,10 @@ paths:
                     - Using the browser's geolocation API when user clicks "Use My Location"
                     - Accepting a Google Maps URL when user pastes it manually
                   example: "https://maps.google.com/?q=8.5670,39.2894"
+                address:
+                  type: string
+                  description: Physical address of the bookshop
+                  example: "123 Main Street, Addis Ababa, Ethiopia"
                 logo:
                   type: string
                   format: binary
@@ -3974,6 +3973,7 @@ paths:
                 - name
                 - contactPhone
                 - location
+                - address
           application/json:
             schema:
               $ref: '#/components/schemas/BookShopCreate'
@@ -4071,7 +4071,16 @@ paths:
                 upcomingEvents:
                   type: array
                 location:
-                  type: object
+                  type: string
+                  description: |
+                    Updated bookshop location. Can be provided in two ways:
+                    1. Google Maps URL (e.g., "https://maps.google.com/?q=8.5670,39.2894")
+                    2. Coordinates in "latitude,longitude" format (e.g., "8.5670,39.2894")
+                  example: "https://maps.google.com/?q=8.5670,39.2894"
+                address:
+                  type: string
+                  description: Updated physical address of the bookshop
+                  example: "456 New Street, Addis Ababa, Ethiopia"
                 logo:
                   type: string
                   format: binary
@@ -4340,49 +4349,10 @@ paths:
           -F 'name=New Bookshop Name' \
           -F 'tagline=Your New Tagline' \
           -F 'description=Updated description' \
+          -F 'address=456 New Street, Addis Ababa, Ethiopia' \
           -F 'logo=@new-logo.jpg' \
           -F 'background=@new-background.jpg'
         ```
-        
-        Example using multipart/form-data to update hours and contact:
-        ```bash
-        curl -X PATCH 'http://localhost:5000/api/bookshop/update-fields' \
-          -H 'Authorization: Bearer YOUR_TOKEN' \
-          -F 'mondayHours=8:00 AM - 6:00 PM' \
-          -F 'tuesdayHours=8:00 AM - 6:00 PM' \
-          -F 'contactPhone=+251912345678' \
-          -F 'contactEmail=new@bookshop.com'
-        ```
-        
-        Example using JSON to update multiple fields:
-        ```json
-        {
-          "name": "New Bookshop Name",
-          "tagline": "Your New Tagline",
-          "description": "Updated description of the bookshop",
-          "services": "Café,Reading Area,Free Wi-Fi",
-          "contactPhone": "+251912345678",
-          "contactEmail": "new@bookshop.com",
-          "contactWebsite": "https://new-bookshop.com",
-          "paymentProviders": "Telebirr,CBE Birr,Amole",
-          "paymentPhoneNumbers": "0912345678,0923456789,0934567890",
-          "mondayHours": "8:00 AM - 6:00 PM",
-          "tuesdayHours": "8:00 AM - 6:00 PM",
-          "wednesdayHours": "8:00 AM - 6:00 PM",
-          "thursdayHours": "8:00 AM - 6:00 PM",
-          "fridayHours": "8:00 AM - 6:00 PM",
-          "saturdayHours": "9:00 AM - 5:00 PM",
-          "sundayHours": "Closed",
-          "facebookUrl": "https://facebook.com/new-bookshop",
-          "instagramUrl": "https://instagram.com/new-bookshop",
-          "twitterUrl": "https://twitter.com/new-bookshop",
-          "location": "https://maps.google.com/?q=8.5670,39.2894"
-        }
-        ```
-        
-        Note: When updating location, you can provide either:
-        1. A Google Maps URL (e.g., "https://maps.google.com/?q=8.5670,39.2894")
-        2. Coordinates in "latitude,longitude" format (e.g., "8.5670,39.2894")
       tags: [Bookshop Management]
       security:
         - bearerAuth: []
@@ -4481,6 +4451,10 @@ paths:
                     1. Google Maps URL (e.g., "https://maps.google.com/?q=8.5670,39.2894")
                     2. Coordinates in "latitude,longitude" format (e.g., "8.5670,39.2894")
                   example: "https://maps.google.com/?q=8.5670,39.2894"
+                address:
+                  type: string
+                  description: Updated physical address of the bookshop
+                  example: "456 New Street, Addis Ababa, Ethiopia"
                 logo:
                   type: string
                   format: binary

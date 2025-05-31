@@ -24,6 +24,7 @@ router.post("/", createUser);
 
 // Protected routes
 router.get("/me", protect, getMyProfile);
+router.get("/notifications", protect, getUserNotifications);
 router.put("/me", protect, updateProfile);
 router.put("/me/image", protect, profileUpload.single("profileImage"), updateProfileImage);
 router.get("/me/orders", protect, getMyOrders);
