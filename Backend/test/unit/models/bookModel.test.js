@@ -1,7 +1,39 @@
 const mongoose = require('mongoose');
 const Book = require('../../../models/bookModel');
+const BookShop = require('../../../models/bookShopModel');
+const User = require('../../../models/userModel');
 
 describe('Book Model Test', () => {
+  let testShop;
+  let testSeller;
+
+  beforeEach(async () => {
+    // Create a test seller
+    testSeller = await User.create({
+      name: 'Test Seller',
+      email: `seller${Date.now()}@example.com`,
+      password: 'password123',
+      role: 'seller'
+    });
+
+    // Create a test shop
+    testShop = await BookShop.create({
+      name: `Test Shop ${Date.now()}`,
+      tagline: 'Test Tagline',
+      description: 'Test Description',
+      contact: {
+        phoneNumber: '+251912345678',
+        email: `shop${Date.now()}@example.com`
+      },
+      location: {
+        type: 'Point',
+        coordinates: [38.7, 9.0], // Addis Ababa coordinates
+        address: 'Test Address'
+      },
+      seller: testSeller._id
+    });
+  });
+
   describe('Book Schema Validation', () => {
     it('should create a physical book successfully with valid data', async () => {
       const bookData = {
@@ -10,7 +42,8 @@ describe('Book Model Test', () => {
         description: 'Test Description',
         price: 19.99,
         category: 'Fiction',
-        seller: new mongoose.Types.ObjectId(),
+        seller: testSeller._id,
+        shop: testShop._id,
         stock: 10,
         isbn: '9783161484100',
         isDigital: false,
@@ -31,8 +64,9 @@ describe('Book Model Test', () => {
         author: 'Digital Author',
         description: 'Digital Description',
         price: 9.99,
-        category: 'Non-Fiction',
-        seller: new mongoose.Types.ObjectId(),
+        category: 'Fiction',
+        seller: testSeller._id,
+        shop: testShop._id,
         isbn: '9783161484100',
         isDigital: true,
         isAudiobook: false,
@@ -52,7 +86,8 @@ describe('Book Model Test', () => {
         description: 'Audio Description',
         price: 14.99,
         category: 'Fiction',
-        seller: new mongoose.Types.ObjectId(),
+        seller: testSeller._id,
+        shop: testShop._id,
         isbn: '9783161484100',
         isDigital: false,
         isAudiobook: true,
@@ -91,7 +126,8 @@ describe('Book Model Test', () => {
         description: 'Test Description',
         price: 19.99,
         category: 'Fiction',
-        seller: new mongoose.Types.ObjectId(),
+        seller: testSeller._id,
+        shop: testShop._id,
         isbn: '9783161484100',
         isDigital: false,
         isAudiobook: false
@@ -113,8 +149,9 @@ describe('Book Model Test', () => {
         author: 'Digital Author',
         description: 'Digital Description',
         price: 9.99,
-        category: 'Non-Fiction',
-        seller: new mongoose.Types.ObjectId(),
+        category: 'Fiction',
+        seller: testSeller._id,
+        shop: testShop._id,
         isbn: '9783161484100',
         isDigital: true,
         isAudiobook: false
@@ -137,11 +174,12 @@ describe('Book Model Test', () => {
         description: 'Test Description',
         price: 19.99,
         category: 'Fiction',
-        seller: new mongoose.Types.ObjectId(),
+        seller: testSeller._id,
+        shop: testShop._id,
+        stock: 10,
         isbn: 'invalid-isbn',
         isDigital: false,
-        isAudiobook: false,
-        stock: 10
+        isAudiobook: false
       };
       let error;
       try {
@@ -160,11 +198,12 @@ describe('Book Model Test', () => {
         description: 'Test Description',
         price: 19.99,
         category: 'InvalidCategory',
-        seller: new mongoose.Types.ObjectId(),
+        seller: testSeller._id,
+        shop: testShop._id,
+        stock: 10,
         isbn: '9783161484100',
         isDigital: false,
-        isAudiobook: false,
-        stock: 10
+        isAudiobook: false
       };
       let error;
       try {
@@ -179,10 +218,18 @@ describe('Book Model Test', () => {
 
   describe('Book Model Methods', () => {
     it('should update stock correctly', async () => {
-      const book = await createTestBook(Book, { 
-        stock: 10,
+      const book = await Book.create({
+        title: 'Test Book',
+        author: 'Test Author',
+        description: 'Test Description',
+        price: 19.99,
         category: 'Fiction',
-        isbn: '9783161484100'
+        seller: testSeller._id,
+        shop: testShop._id,
+        stock: 10,
+        isbn: '9783161484100',
+        isDigital: false,
+        isAudiobook: false
       });
       
       // Test adding stock
@@ -195,10 +242,18 @@ describe('Book Model Test', () => {
     });
 
     it('should not allow negative stock', async () => {
-      const book = await createTestBook(Book, { 
-        stock: 5,
+      const book = await Book.create({
+        title: 'Test Book',
+        author: 'Test Author',
+        description: 'Test Description',
+        price: 19.99,
         category: 'Fiction',
-        isbn: '9783161484100'
+        seller: testSeller._id,
+        shop: testShop._id,
+        stock: 5,
+        isbn: '9783161484100',
+        isDigital: false,
+        isAudiobook: false
       });
       
       let error;
@@ -212,10 +267,20 @@ describe('Book Model Test', () => {
     });
 
     it('should calculate average rating correctly', async () => {
-      const book = await createTestBook(Book, {
+      const book = await Book.create({
+        title: 'Test Book',
+        author: 'Test Author',
+        description: 'Test Description',
+        price: 19.99,
         category: 'Fiction',
-        isbn: '9783161484100'
+        seller: testSeller._id,
+        shop: testShop._id,
+        stock: 10,
+        isbn: '9783161484100',
+        isDigital: false,
+        isAudiobook: false
       });
+
       book.reviews = [
         { rating: 4, user: new mongoose.Types.ObjectId() },
         { rating: 5, user: new mongoose.Types.ObjectId() },
@@ -227,9 +292,18 @@ describe('Book Model Test', () => {
     });
 
     it('should update sales count correctly', async () => {
-      const book = await createTestBook(Book, {
+      const book = await Book.create({
+        title: 'Test Book',
+        author: 'Test Author',
+        description: 'Test Description',
+        price: 19.99,
         category: 'Fiction',
-        isbn: '9783161484100'
+        seller: testSeller._id,
+        shop: testShop._id,
+        stock: 10,
+        isbn: '9783161484100',
+        isDigital: false,
+        isAudiobook: false
       });
       
       await book.incrementSales(3);
@@ -242,10 +316,18 @@ describe('Book Model Test', () => {
 
   describe('Book Model Virtuals', () => {
     it('should calculate isAvailable correctly', async () => {
-      const book = await createTestBook(Book, { 
-        stock: 5,
+      const book = await Book.create({
+        title: 'Test Book',
+        author: 'Test Author',
+        description: 'Test Description',
+        price: 19.99,
         category: 'Fiction',
-        isbn: '9783161484100'
+        seller: testSeller._id,
+        shop: testShop._id,
+        stock: 5,
+        isbn: '9783161484100',
+        isDigital: false,
+        isAudiobook: false
       });
       expect(book.isAvailable).toBe(true);
 
@@ -255,10 +337,18 @@ describe('Book Model Test', () => {
     });
 
     it('should calculate formattedPrice correctly', async () => {
-      const book = await createTestBook(Book, { 
+      const book = await Book.create({
+        title: 'Test Book',
+        author: 'Test Author',
+        description: 'Test Description',
         price: 19.99,
         category: 'Fiction',
-        isbn: '9783161484100'
+        seller: testSeller._id,
+        shop: testShop._id,
+        stock: 10,
+        isbn: '9783161484100',
+        isDigital: false,
+        isAudiobook: false
       });
       expect(book.formattedPrice).toBe('$19.99');
     });

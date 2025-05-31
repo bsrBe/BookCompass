@@ -84,6 +84,13 @@ connectDB();
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log("Server listening on port", PORT);
-});
+// Only start the server if this file is run directly (not required by tests)
+if (require.main === module) {
+  const server = app.listen(PORT, () => {
+    console.log("Server listening on port", PORT);
+  });
+  module.exports = { app, server };
+} else {
+  // When required by tests, just export the app
+  module.exports = app;
+}

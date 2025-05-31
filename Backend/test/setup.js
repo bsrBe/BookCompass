@@ -1,8 +1,13 @@
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
+const path = require('path');
+const { exec } = require('child_process');
+const util = require('util');
+const execAsync = util.promisify(exec);
 
 let mongod;
+let server;
 
 // Set test environment variables
 process.env.PORT = 0; // Use random available port
@@ -10,13 +15,49 @@ process.env.NODE_ENV = 'test';
 
 // Connect to the in-memory database
 beforeAll(async () => {
-  // Close any existing connections
-  await mongoose.disconnect();
-  
-  mongod = await MongoMemoryServer.create();
-  const uri = mongod.getUri();
-  await mongoose.connect(uri);
-}, 30000); // Increase timeout to 30 seconds
+  try {
+    // Close any existing connections
+    if (mongoose.connection.readyState !== 0) {
+      await mongoose.disconnect();
+    }
+    
+    // Kill any existing mongod processes on the test port
+    try {
+      execSync('taskkill /F /IM mongod.exe', { stdio: 'ignore' });
+    } catch (e) {
+      // Ignore errors if no process was found
+    }
+    
+    // Enable debug logging
+    process.env.DEBUG = 'mongodb-memory-server:*';
+    
+    mongod = await MongoMemoryServer.create({
+      instance: {
+        dbName: 'jest',
+        port: 27018, // Use a specific port instead of 0
+        version: '4.4.18'
+      },
+      binary: {
+        version: '4.4.18',
+        downloadDir: path.join(__dirname, '../node_modules/.cache/mongodb-memory-server'),
+        checkMD5: false
+      }
+    });
+    const uri = mongod.getUri();
+    
+    // Add connection options with increased timeouts
+    const options = {
+      serverSelectionTimeoutMS: 120000, // 2 minutes
+      socketTimeoutMS: 120000, // 2 minutes
+      connectTimeoutMS: 120000 // 2 minutes
+    };
+
+    await mongoose.connect(uri, options);
+  } catch (error) {
+    console.error('Error in beforeAll setup:', error);
+    throw error;
+  }
+}, 120000); // Increase timeout to 2 minutes
 
 // Clear database between tests
 beforeEach(async () => {
@@ -26,16 +67,35 @@ beforeEach(async () => {
   }
 });
 
-// Disconnect and stop server
+// Cleanup after all tests
 afterAll(async () => {
   try {
-    await mongoose.connection.dropDatabase();
-    await mongoose.disconnect();
-    await mongod.stop();
+    // Close mongoose connection
+    if (mongoose.connection.readyState !== 0) {
+      await mongoose.disconnect();
+    }
+    
+    // Stop the MongoDB memory server
+    if (mongod) {
+      await mongod.stop({ force: true });
+    }
+    
+    // Kill any remaining mongod processes
+    try {
+      execSync('taskkill /F /IM mongod.exe', { stdio: 'ignore' });
+    } catch (e) {
+      // Ignore errors if no process was found
+    }
   } catch (error) {
-    console.error('Error in afterAll:', error);
+    console.error('Error in afterAll cleanup:', error);
+    throw error;
   }
-});
+}, 30000); // 30 second timeout for cleanup
+
+// Helper to store server instance
+global.setTestServer = (srv) => {
+  server = srv;
+};
 
 // Helper function to generate test JWT tokens
 global.generateTestToken = (user) => {
@@ -80,11 +140,24 @@ global.createTestBook = async (Book, bookData = {}) => {
 // Import and use the Cloudinary mock
 jest.mock('cloudinary', () => require('./helpers/cloudinaryMock'));
 
+// Mock email service
+jest.mock('../utils/sendEmail', () => ({
+  sendEmail: jest.fn().mockResolvedValue({ success: true }),
+  sendPasswordResetEmail: jest.fn().mockResolvedValue({ success: true }),
+  sendWelcomeEmail: jest.fn().mockResolvedValue({ success: true })
+}));
+
 // Mock nodemailer
 jest.mock('nodemailer', () => ({
   createTransport: jest.fn().mockReturnValue({
-    sendMail: jest.fn().mockResolvedValue(true)
+    sendMail: jest.fn().mockResolvedValue({ messageId: 'test-message-id' })
   })
+}));
+
+// Mock JWT
+jest.mock('jsonwebtoken', () => ({
+  sign: jest.fn().mockReturnValue('test-token'),
+  verify: jest.fn().mockReturnValue({ id: 'test-user-id' })
 }));
 
 // Mock environment variables
@@ -92,7 +165,7 @@ process.env.JWT_SECRET = 'test-secret';
 process.env.JWT_EXPIRE = '1h';
 process.env.CLOUDINARY_CLOUD_NAME = 'test-cloud';
 process.env.CLOUDINARY_API_KEY = 'test-key';
-process.env.CLOUDINARY_API_SECRET = 'test-secret';
+process.env.CLOUDINARY_SECRET_KEY = 'test-secret';
 process.env.EMAIL_SERVICE = 'gmail';
 process.env.EMAIL_USERNAME = 'test@example.com';
 process.env.EMAIL_PASSWORD = 'test-password';

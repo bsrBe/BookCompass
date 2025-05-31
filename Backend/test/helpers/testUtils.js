@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const User = require('../../models/userModel');
 const Book = require('../../models/bookModel');
+const BookShop = require('../../models/bookShopModel');
 
 const createTestUser = async (userData = {}) => {
   const timestamp = Date.now();
@@ -9,13 +10,36 @@ const createTestUser = async (userData = {}) => {
     name: 'Test User',
     email: `test${timestamp}@example.com`,
     password: 'password123',
-    role: 'user',
+    role: 'buyer',
     ...userData
   };
   return await User.create(defaultUser);
 };
 
+const createTestBookShop = async (sellerId) => {
+  const defaultShop = {
+    name: `Test Shop ${Date.now()}`,
+    tagline: 'Test Tagline',
+    description: 'Test Description',
+    contact: {
+      phoneNumber: '+251912345678',
+      email: `shop${Date.now()}@example.com`
+    },
+    location: {
+      type: 'Point',
+      coordinates: [38.7, 9.0], // Addis Ababa coordinates
+      address: 'Test Address'
+    },
+    seller: sellerId
+  };
+  return await BookShop.create(defaultShop);
+};
+
 const createTestBook = async (bookData = {}) => {
+  // Create a seller and shop first
+  const seller = await createTestUser({ role: 'seller' });
+  const shop = await createTestBookShop(seller._id);
+
   const defaultBook = {
     title: 'Test Book',
     author: 'Test Author',
@@ -26,7 +50,8 @@ const createTestBook = async (bookData = {}) => {
     isDigital: false,
     isAudiobook: false,
     stock: 10,
-    seller: new mongoose.Types.ObjectId(),
+    seller: seller._id,
+    shop: shop._id,
     ...bookData
   };
 
@@ -55,13 +80,15 @@ const setupTestUser = async (userData = {}) => {
 
 const setupTestBook = async (bookData = {}) => {
   const { user } = await setupTestUser({ role: 'seller' });
-  const book = await createTestBook({ ...bookData, seller: user._id });
-  return { book, user };
+  const shop = await createTestBookShop(user._id);
+  const book = await createTestBook({ ...bookData, seller: user._id, shop: shop._id });
+  return { book, user, shop };
 };
 
 module.exports = {
   createTestUser,
   createTestBook,
+  createTestBookShop,
   generateTestToken,
   setupTestUser,
   setupTestBook

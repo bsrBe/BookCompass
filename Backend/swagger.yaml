@@ -3211,7 +3211,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-  /api/user/library:
+  /api/users/library:
     get:
       summary: Get user's library
       tags: [User Management]

@@ -109,9 +109,93 @@ const bookSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    salesCount: {
+      type: Number,
+      default: 0,
+      min: [0, "Sales count cannot be negative"]
+    }
   },
-  { timestamps: true }
+  { 
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
+  }
 );
+
+// Add text search indexes at the schema level
+bookSchema.index({ title: 'text', author: 'text', description: 'text' }, { weights: { title: 10, author: 5, description: 1 } });
+
+// Add salesCount field
+bookSchema.add({
+  salesCount: {
+    type: Number,
+    default: 0,
+    min: [0, "Sales count cannot be negative"]
+  }
+});
+
+// Add reviews virtual
+bookSchema.virtual('reviews', {
+  ref: 'Review',
+  localField: '_id',
+  foreignField: 'book',
+  justOne: false
+});
+
+// Add isAvailable virtual
+bookSchema.virtual('isAvailable').get(function() {
+  if (this.isDigital || this.isAudiobook) {
+    return true;
+  }
+  return this.stock > 0;
+});
+
+// Add formattedPrice virtual
+bookSchema.virtual('formattedPrice').get(function() {
+  return `$${this.price.toFixed(2)}`;
+});
+
+// Add updateStock method
+bookSchema.methods.updateStock = async function(quantity) {
+  if (this.isDigital || this.isAudiobook) {
+    throw new Error('Cannot update stock for digital or audiobook');
+  }
+  
+  const newStock = this.stock + quantity;
+  if (newStock < 0) {
+    throw new Error('Stock cannot be negative');
+  }
+  
+  this.stock = newStock;
+  return this.save();
+};
+
+// Add incrementSales method
+bookSchema.methods.incrementSales = async function(quantity = 1) {
+  if (quantity < 0) {
+    throw new Error('Sales quantity cannot be negative');
+  }
+  
+  this.salesCount += quantity;
+  return this.save();
+};
+
+// Add method to calculate average rating
+bookSchema.methods.calculateAverageRating = async function() {
+    const Review = mongoose.model('Review');
+    const reviews = await Review.find({ book: this._id });
+    
+    if (reviews.length === 0) {
+        this.averageRating = 0;
+        this.numReviews = 0;
+        return this.save();
+    }
+    
+    const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+    this.averageRating = Math.round((totalRating / reviews.length) * 10) / 10; // Round to 1 decimal place
+    this.numReviews = reviews.length;
+    return this.save();
+};
 
 // Middleware to update BookShop's availableBooks array
 bookSchema.post('save', async function () {
