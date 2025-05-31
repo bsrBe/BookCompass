@@ -3231,7 +3231,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-  /api/users/library:
+  /api/user/library:
     get:
       summary: Get user's library
       tags: [User Management]
@@ -4496,6 +4496,70 @@ paths:
                 $ref: '#/components/schemas/Error'
         '404':
           description: Bookshop not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/books/getAllBooks:
+    get:
+      summary: Get all books
+      description: |
+        Retrieve a list of all books (physical, digital, and audiobooks) with optional filtering.
+        The response excludes fileUrl for security reasons.
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Search term for book title
+        - in: query
+          name: category
+          schema:
+            type: string
+          description: Filter by book category
+        - in: query
+          name: minPrice
+          schema:
+            type: number
+          description: Minimum price filter
+        - in: query
+          name: maxPrice
+          schema:
+            type: number
+          description: Maximum price filter
+        - in: query
+          name: sort
+          schema:
+            type: string
+            enum: [price-asc, price-desc, newest]
+          description: Sort order (price ascending, price descending, or newest first)
+      responses:
+        '200':
+          description: List of all books
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  count:
+                    type: number
+                    description: Total number of books
+                    example: 50
+                  data:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: '#/components/schemas/Book'
+                        - type: object
+                          properties:
+                            fileUrl:
+                              not: {}
+        '500':
+          description: Server error
           content:
             application/json:
               schema:
