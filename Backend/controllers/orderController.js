@@ -6,7 +6,7 @@ const User = require("../models/userModel");
 const asyncHandler = require("../utils/asyncHandler");
 const axios = require("axios");
 const sendEmail = require("../utils/sendEmail");
-const { geocodeAddress } = require("../utils/geoCode");
+const { geocodeAddress } = require("../utils/geocode");
 require("dotenv").config();
 const CHAPA_SECRET_KEY = process.env.CHAPA_SECRET_KEY;
 const CHAPA_API_URL = "https://api.chapa.co/v1/transaction/initialize";
