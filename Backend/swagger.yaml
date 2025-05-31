@@ -3343,12 +3343,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-  /interactions/view:
+  /api/interactions/view:
     post:
       tags: [Analytics & Interactions]
       summary: Record a book view
       security:
-        - cookieAuth: []
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -3380,12 +3380,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-  /interactions/rate:
+  /api/interactions/rate:
     post:
       tags: [Analytics & Interactions]
       summary: Record a book rating
       security:
-        - cookieAuth: []
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -3423,12 +3423,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-  /interactions/time:
+  /api/interactions/time:
     post:
       tags: [Analytics & Interactions]
       summary: Record time spent on a book
       security:
-        - cookieAuth: []
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -3465,12 +3465,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-  /interactions/history:
+  /api/interactions/history:
     get:
       tags: [Analytics & Interactions]
       summary: Get user's interaction history
       security:
-        - cookieAuth: []
+        - bearerAuth: []
       responses:
         '200':
           description: User's interaction history
@@ -3492,12 +3492,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-  /interactions/recommendations:
+  /api/interactions/recommendations:
     get:
       tags: [Analytics & Interactions]
       summary: Get personalized book recommendations
       security:
-        - cookieAuth: []
+        - bearerAuth: []
       responses:
         '200':
           description: Personalized book recommendations
