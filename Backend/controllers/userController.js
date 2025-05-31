@@ -338,16 +338,22 @@ exports.getMyOrders = async (req, res) => {
 // Get user's wishlist
 exports.getMyWishlist = async (req, res) => {
     try {
-        const wishlist = await Wishlist.find({ 
+        const wishlistItems = await Wishlist.find({ 
             user: req.user.id,
             status: 'active'
-        }).populate('book');
+        })
+        .populate({
+            path: 'book',
+            select: '-fileUrl' // Exclude fileUrl for security
+        })
+        .sort('-createdAt');
 
         res.status(200).json({ 
             success: true, 
-            data: wishlist 
+            data: wishlistItems 
         });
     } catch (error) {
+        console.error("Error fetching wishlist:", error);
         res.status(500).json({ 
             success: false, 
             error: error.message 
@@ -406,7 +412,7 @@ exports.deleteMyAccount = async (req, res) => {
         await Promise.all([
             Order.deleteMany({ user: req.user.id }),
             Notification.deleteMany({ user: req.user.id }),
-            Wishlist.deleteMany({ user: req.user.id }),
+            Wishlist.Wishlist.deleteMany({ user: req.user.id }),
             Interaction.deleteMany({ userId: req.user.id })
         ]);
 
