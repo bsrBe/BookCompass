@@ -15,9 +15,11 @@ const {
   getAudiobooks,
   deleteBook,
   getMostSoldBooks,
+  getAllBooks,
 } = require("../controllers/bookController");
 
 // New routes for browsing digital and physical books separately
+router.get("/getAllBooks", getAllBooks);
 router.get("/getDigitalBooks", getDigitalBooks);
 router.get("/getPhysicalBooks", getPhysicalBooks);
 router.get("/audiobooks", getAudiobooks);
