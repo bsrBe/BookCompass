@@ -452,6 +452,53 @@ const getMostSoldBooks = async (req, res) => {
   }
 };
 
+const getAllBooks = async (req, res) => {
+  try {
+    const { search, category, minPrice, maxPrice, sort } = req.query;
+    let query = {};
+
+    // Search by title
+    if (search) {
+      query.title = { $regex: search, $options: "i" };
+    }
+
+    // Filter by category
+    if (category) {
+      query.category = category;
+    }
+
+    // Filter by price range
+    if (minPrice || maxPrice) {
+      query.price = {};
+      if (minPrice) query.price.$gte = Number(minPrice);
+      if (maxPrice) query.price.$lte = Number(maxPrice);
+    }
+
+    // Fetch books based on query
+    let books = await Book.find(query).select('-fileUrl');
+
+    // Sorting logic
+    if (sort === "price-asc") {
+      books.sort((a, b) => a.price - b.price);
+    } else if (sort === "price-desc") {
+      books.sort((a, b) => b.price - a.price);
+    } else if (sort === "newest") {
+      books.sort((a, b) => b.createdAt - a.createdAt);
+    }
+
+    res.status(200).json({
+      success: true,
+      count: books.length,
+      data: books
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false,
+      error: error.message 
+    });
+  }
+};
+
 module.exports = {
   getDigitalBooks,
   getPhysicalBooks,
@@ -462,4 +509,5 @@ module.exports = {
   getAudiobooks,
   deleteBook,
   getMostSoldBooks,
+  getAllBooks,
 };
