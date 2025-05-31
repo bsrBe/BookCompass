@@ -251,7 +251,7 @@ const inviteAdmin = async (req, res) => {
       const user = await User.create({
         name,
         email,
-        role: "Admin",
+        role: "admin",
         password: "Temporary@123", // required field, will be overwritten later
       });
   
