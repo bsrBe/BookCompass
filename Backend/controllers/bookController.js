@@ -215,8 +215,20 @@ const createBook = async (req, res) => {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    let imageUrl = "https://via.placeholder.com/150"; // Default for physical books
+    let imageUrl = "https://via.placeholder.com/150"; // Default placeholder
     let fileUrl = null;
+
+    // Handle image upload for all book types if provided
+    if (req.files && req.files.image) {
+      const imageFile = req.files.image[0];
+      try {
+        imageUrl = await uploadImage(imageFile.buffer, "book_images");
+        console.log("Uploaded image URL:", imageUrl); // Debug log
+      } catch (uploadError) {
+        console.error("Image upload error:", uploadError);
+        return res.status(400).json({ error: "Failed to upload image" });
+      }
+    }
 
     if (isDigitalBook || isAudiobookBook) {
       // Digital book or audiobook: require a file upload
@@ -230,21 +242,9 @@ const createBook = async (req, res) => {
         folder: isAudiobookBook ? "audiobooks" : "digital_books",
       });
     } else {
-      // Physical book: require stock and an image (optional, defaults to placeholder)
+      // Physical book: require stock
       if (!stock || isNaN(stock) || parseInt(stock) < 0) {
         return res.status(400).json({ error: "Stock is required for physical books and must be a non-negative number" });
-      }
-
-      // Handle image upload for physical books
-      if (req.files && req.files.image) {
-        const imageFile = req.files.image[0];
-        try {
-          imageUrl = await uploadImage(imageFile.buffer, "book_images");
-          console.log("Uploaded image URL:", imageUrl); // Debug log
-        } catch (uploadError) {
-          console.error("Image upload error:", uploadError);
-          return res.status(400).json({ error: "Failed to upload image" });
-        }
       }
     }
 
