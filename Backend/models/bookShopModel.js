@@ -3,10 +3,9 @@ const mongoose = require("mongoose");
 const bookShopSchema = new mongoose.Schema({
     name: {
         type: String,
-        required: [true, "Bookstore name is required"],
-        unique: true,
+        required: [true, "Please add a shop name"],
         trim: true,
-        maxlength: [100, "Name cannot be more than 100 characters"]
+        maxlength: [100, "Shop name cannot be more than 100 characters"]
     },
     tagline: {
         type: String,
@@ -15,7 +14,7 @@ const bookShopSchema = new mongoose.Schema({
     },
     description: {
         type: String,
-        trim: true,
+        required: false,
         maxlength: [1000, "Description cannot be more than 1000 characters"]
     },
     services: [{
@@ -30,19 +29,14 @@ const bookShopSchema = new mongoose.Schema({
             "Other"
         ]
     }],
-    availableBooks: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Book"
-    }],
     contact: {
         phoneNumber: {
             type: String,
-            required: [true, "Phone number is required"],
-            match: [/^\+?[1-9]\d{1,14}$/, "Please enter a valid phone number"]
+            required: [true, "Phone number is required"]
         },
         email: {
             type: String,
-            required: [true, "Email is required"],
+            required: false,
             match: [
                 /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
                 "Please add a valid email"
@@ -50,6 +44,7 @@ const bookShopSchema = new mongoose.Schema({
         },
         website: {
             type: String,
+            required: false,
             match: [
                 /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/,
                 "Please add a valid URL"
@@ -69,13 +64,34 @@ const bookShopSchema = new mongoose.Schema({
         }
     }],
     operatingHours: {
-        monday: { type: String, default: "9:00 AM - 5:00 PM" },
-        tuesday: { type: String, default: "9:00 AM - 5:00 PM" },
-        wednesday: { type: String, default: "9:00 AM - 5:00 PM" },
-        thursday: { type: String, default: "9:00 AM - 5:00 PM" },
-        friday: { type: String, default: "9:00 AM - 5:00 PM" },
-        saturday: { type: String, default: "10:00 AM - 4:00 PM" },
-        sunday: { type: String, default: "Closed" }
+        monday: {
+            type: String,
+            default: "9:00 AM - 5:00 PM"
+        },
+        tuesday: {
+            type: String,
+            default: "9:00 AM - 5:00 PM"
+        },
+        wednesday: {
+            type: String,
+            default: "9:00 AM - 5:00 PM"
+        },
+        thursday: {
+            type: String,
+            default: "9:00 AM - 5:00 PM"
+        },
+        friday: {
+            type: String,
+            default: "9:00 AM - 5:00 PM"
+        },
+        saturday: {
+            type: String,
+            default: "10:00 AM - 4:00 PM"
+        },
+        sunday: {
+            type: String,
+            default: "Closed"
+        }
     },
     socialMedia: {
         facebook: {
@@ -98,35 +114,8 @@ const bookShopSchema = new mongoose.Schema({
                 /^(https?:\/\/)?(www\.)?twitter\.com\/[a-zA-Z0-9_]+$/,
                 "Please add a valid Twitter URL"
             ]
-        },
-        other: {
-            type: String,
-            match: [
-                /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/,
-                "Please add a valid URL"
-            ]
         }
     },
-    upcomingEvents: [{
-        name: {
-            type: String,
-            required: true,
-            maxlength: [100, "Event name cannot be more than 100 characters"]
-        },
-        date: {
-            type: Date,
-            required: true
-        },
-        time: {
-            type: String,
-            required: true,
-            match: [/^([0-1]?[0-9]|2[0-3]):[0-5][0-9] (AM|PM)$/, "Please enter a valid time in 12-hour format (e.g., 9:00 AM)"]
-        },
-        description: {
-            type: String,
-            maxlength: [500, "Description cannot be more than 500 characters"]
-        }
-    }],
     images: {
         logo: {
             type: String,
@@ -147,7 +136,8 @@ const bookShopSchema = new mongoose.Schema({
         type: {
             type: String,
             enum: ['Point'],
-            required: true
+            required: true,
+            default: 'Point'
         },
         coordinates: {
             type: [Number],
@@ -163,10 +153,13 @@ const bookShopSchema = new mongoose.Schema({
         },
         address: {
             type: String,
-            required: [true, "Address is required"],
-         
+            required: [true, "Address is required"]
         }
     },
+    availableBooks: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Book"
+    }],
     averageRating: {
         type: Number,
         default: 0,
@@ -193,5 +186,27 @@ bookShopSchema.virtual('reviews', {
     foreignField: 'bookShop',
     justOne: false
 });
+
+// Virtual for total books
+bookShopSchema.virtual('totalBooks').get(function() {
+    return this.availableBooks ? this.availableBooks.length : 0;
+});
+
+// Method to add book to shop
+bookShopSchema.methods.addBook = async function(bookId) {
+    if (!this.availableBooks.includes(bookId)) {
+        this.availableBooks.push(bookId);
+        await this.save();
+    }
+};
+
+// Method to remove book from shop
+bookShopSchema.methods.removeBook = async function(bookId) {
+    this.availableBooks = this.availableBooks.filter(id => id.toString() !== bookId.toString());
+    await this.save();
+};
+
+// Create text index for search
+bookShopSchema.index({ name: 'text', description: 'text' });
 
 module.exports = mongoose.model("BookShop", bookShopSchema); 
