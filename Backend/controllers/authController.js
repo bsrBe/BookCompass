@@ -188,6 +188,12 @@ const resetPassword = async (req, res) => {
         user.password = newPassword;
         user.resetPasswordToken = undefined;
         user.resetPasswordExpire = undefined;
+
+        // If user is an admin, automatically confirm their email
+        if (user.role === 'admin') {
+            user.isEmailConfirmed = true;
+        }
+
         await user.save();
 
         // Respond with the updated user and token
@@ -244,17 +250,21 @@ const inviteAdmin = async (req, res) => {
     try {
       const existingUser = await User.findOne({ email });
       if (existingUser) {
+        console.log('User already exists:', email);
         return res.status(400).json({ msg: "User already exists" });
       }
   
-      // Create the user without password
+      console.log('Creating new admin user...');
+      // Create the user with a valid temporary password
       const user = await User.create({
         name,
         email,
         role: "admin",
-        password: "Temporary@123", // required field, will be overwritten later
+        password: "Admin123456", // Valid temporary password that meets requirements
+        isEmailConfirmed: false // Start with email unconfirmed
       });
   
+      console.log('Generating reset token...');
       // Generate reset token
       const resetToken = user.getResetPasswordToken();
       await user.save({ validateBeforeSave: false });
@@ -263,15 +273,37 @@ const inviteAdmin = async (req, res) => {
       const message = `You've been invited as an Admin. Set your password using this link: <a href="${inviteUrl}">Set Password</a>`;
 
 
-      await sendEmail({
-        email: user.email,
-        subject: "Admin Invitation",
-        message,
-      });
+      console.log('Sending invitation email...');
+      try {
+        await sendEmail({
+          email: user.email,
+          subject: "BookCompass Admin Invitation",
+          message,
+        });
+        console.log('Invitation email sent successfully');
+      } catch (emailError) {
+        console.error('Failed to send invitation email:', emailError);
+        // If email fails, delete the user we just created
+        await User.findByIdAndDelete(user._id);
+        throw new Error('Failed to send invitation email. Please try again.');
+      }
   
-      res.status(200).json({ msg: "Invitation sent to Admin email" });
+      res.status(200).json({ 
+        success: true,
+        msg: "Invitation sent to Admin email",
+        data: {
+          email: user.email,
+          name: user.name,
+          role: user.role
+        }
+      });
     } catch (err) {
-      res.status(500).json({ msg: err.message });
+      console.error('Admin invitation failed:', err);
+      res.status(500).json({ 
+        success: false,
+        msg: err.message || "Failed to invite admin",
+        error: process.env.NODE_ENV === 'development' ? err.stack : undefined
+      });
     }
   };
 
