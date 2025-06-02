@@ -57,6 +57,7 @@ const getReviewsForBook = async (req, res) => {
   try {
     const { bookId } = req.params;
     const reviews = await Review.find({ book: bookId })
+      .select('user book rating comment createdAt')  // Explicitly select all fields
       .populate("user", "name")
       .sort({ createdAt: -1 }); // Sort by newest first
 
