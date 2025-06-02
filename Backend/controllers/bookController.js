@@ -103,8 +103,8 @@ const getAudiobooks = async (req, res) => {
       if (maxPrice) query.price.$lte = Number(maxPrice);
     }
 
-    // Fetch books based on query
-    let books = await Book.find(query);
+    // Fetch books based on query, excluding fileUrl
+    let books = await Book.find(query).select('-fileUrl');
 
     // Sorting logic
     if (sort === "price-asc") {
@@ -126,7 +126,7 @@ const getSingleBook = async (req, res) => {
       return res.status(400).json({ error: "Invalid book ID" });
     }
 
-    let book = await Book.findById(id);
+    let book = await Book.findById(id).select('-fileUrl');
     if (!book) {
       return res.status(404).json({ msg: "Book not found" });
     }
