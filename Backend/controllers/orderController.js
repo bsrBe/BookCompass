@@ -1368,6 +1368,39 @@ const getOrder = async (req, res) => {
   }
 };
 
+// const getSingleOrder = async (req, res) => {
+//   const isSeller = req.user.role === "seller";
+//   const sellerId = req.user.id;
+//   const { id } = req.params;
+//   try {
+//     if (!mongoose.Types.ObjectId.isValid(id)) {
+//       return res.status(400).json({ message: "Invalid Order ID format" });
+//     }
+//     if (!isSeller) {
+//       const userSingleOrder = await Order.findOne({ _id: id, user: req.user.id });
+//       if (!userSingleOrder) {
+//         return res.status(404).json({ message: "Order not found" });
+//       }
+//       return res.status(200).json(userSingleOrder);
+//     }
+
+//     const sellerBooks = await Book.find({ seller: sellerId }).select("_id");
+//     const bookIds = sellerBooks.map((book) => book._id);
+//     if (bookIds.length === 0) {
+//       return res.status(404).json({ error: "Seller has no books, no associated orders" });
+//     }
+
+//     const singleOrders = await Order.findOne({ _id: id, "items.book": { $in: bookIds } })
+//       .populate("user", "name email")
+//       .populate("items.book", "title price isDigital isAudiobook");
+//     if (!singleOrders) {
+//       return res.status(404).json({ error: "Order not found or not associated with seller" });
+//     }
+//     return res.status(200).json(singleOrders);
+//   } catch (error) {
+//     res.status(400).json({ error: error.message });
+//   }
+// };
 const getSingleOrder = async (req, res) => {
   const isSeller = req.user.role === "seller";
   const sellerId = req.user.id;
@@ -1381,7 +1414,12 @@ const getSingleOrder = async (req, res) => {
       if (!userSingleOrder) {
         return res.status(404).json({ message: "Order not found" });
       }
-      return res.status(200).json(userSingleOrder);
+      return res.status(200).json({
+        data: {
+          ...userSingleOrder.toObject(),
+          tx_ref: userSingleOrder.txRef,
+        }
+      });
     }
 
     const sellerBooks = await Book.find({ seller: sellerId }).select("_id");
@@ -1396,12 +1434,16 @@ const getSingleOrder = async (req, res) => {
     if (!singleOrders) {
       return res.status(404).json({ error: "Order not found or not associated with seller" });
     }
-    return res.status(200).json(singleOrders);
+    return res.status(200).json({
+      data: {
+        ...singleOrders.toObject(),
+        tx_ref: singleOrders.txRef,
+      }
+    });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 };
-
 const updateOrderStatus = asyncHandler(async (req, res) => {
   const { orderStatus } = req.body;
   const order = await Order.findById(req.params.id)
