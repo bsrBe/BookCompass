@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Book Marketplace API
+  title: Book Compass
   description: API for a book marketplace application allowing users to buy, sell, and review physical, digital, and audiobook products.
   version: 1.0.0
 servers:
