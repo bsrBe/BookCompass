@@ -46,7 +46,7 @@ const bookShopSchema = new mongoose.Schema({
             type: String,
             required: false,
             match: [
-                /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/,
+                /^(https?:\/\/)?(www\.)?[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9](\.[a-zA-Z]{2,})+(\/[a-zA-Z0-9-._~:/?#[\]@!$&'()*+,;=]*)?$/,
                 "Please add a valid URL"
             ]
         }
@@ -60,7 +60,10 @@ const bookShopSchema = new mongoose.Schema({
         phoneNumber: {
             type: String,
             required: [true, "Phone number is required"],
-            match: [/^\d{10}$/, "Phone number must be exactly 10 digits"]
+            match: [
+                /^(\+251|0)[97]\d{8}$/,
+                "Payment phone number must be in format: +251XXXXXXXXX or 09XXXXXXXX"
+            ]
         }
     }],
     operatingHours: {
