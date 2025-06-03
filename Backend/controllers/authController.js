@@ -42,23 +42,33 @@ const register = async (req ,res) => {
     }
 }
 
-const Login = async (req , res ,next) => {
-    const {email , password} = req.body
+const Login = async (req, res, next) => {
+    const { email, password } = req.body;
 
     try {
-        const user = await User.findOne({email}).select("+password")
-        if(!email || !password) {
-            return res.status(400).json({msg : "please provide email and password"})
+        const user = await User.findOne({ email }).select("+password");
+        if (!email || !password) {
+            return res.status(400).json({ msg: "please provide email and password" });
         }
         if (!user) {
             return res.status(404).json({ msg: "invalid credentials, user not found" });
         }
 
         const isMatch = await user.matchPassword(password);
-        if(!isMatch){
-            return res.status(404).json({msg : "invalid credentials"})
+        if (!isMatch) {
+            return res.status(404).json({ msg: "invalid credentials" });
         }
 
+        // Check if user is blocked
+        if (user.isBlocked) {
+            return res.status(403).json({ 
+                success: false,
+                error: 'Account is blocked',
+                msg: "Your account has been blocked. Please contact support." 
+            });
+        }
+
+        // Check if email is not confirmed
         if (!user.isEmailConfirmed) {
             // Generate new confirmation token
             const confirmationToken = user.generateEmailConfirmationToken();
@@ -73,15 +83,18 @@ const Login = async (req , res ,next) => {
                 message
             });
 
-            return res.status(403).json({ msg: "Please verify your email. A new confirmation link has been sent. Don't forget to check your spam folder." });  
+            return res.status(403).json({ 
+                success: false,
+                error: 'Email not confirmed',
+                msg: "Please verify your email. A new confirmation link has been sent. Don't forget to check your spam folder." 
+            });
         }
-        
-        sendTokenResponse(user , 200 ,res)
 
+        sendTokenResponse(user, 200, res);
     } catch (error) {
-        return res.status(500).json({msg : error.message} )
+        return res.status(500).json({ msg: error.message });
     }
-}
+};
 
 const getMe = async (req ,res ,next) => {
     const user = await User.findById(req.user.id).select("-password")
