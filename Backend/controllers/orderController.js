@@ -1101,7 +1101,7 @@ const createOrder = async (req, res) => {
       last_name: req.user.name?.split(" ")[1] || "User",
       tx_ref: order.txRef,
       callback_url: `https://bookcompass.onrender.com/api/order/payment-callback?tx_ref=${order.txRef}`,
-      return_url: `https://bookcompass.onrender.com/api/order/payment-success?tx_ref=${order.txRef}`,
+      // return_url: `https://bookcompass.onrender.com/api/order/payment-success?tx_ref=${order.txRef}`,
       "customization[title]": "Book Order Payment",
       "customization[description]": `Payment for order #${order._id}`,
     };
