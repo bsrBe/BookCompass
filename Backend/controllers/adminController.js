@@ -138,7 +138,7 @@ const blockUser = async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
-    user.isEmailConfirmed = false; // Blocking by disabling email confirmation
+    user.isBlocked = true; // Blocking using the new isBlocked field
     await user.save();
     res.status(200).json({ success: true, message: "User blocked successfully" });
   } catch (error) {
@@ -156,7 +156,7 @@ const unblockUser = async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
-    user.isEmailConfirmed = true; // Unblocking by enabling email confirmation
+    user.isBlocked = false; // Unblocking using the new isBlocked field
     await user.save();
     res.status(200).json({ success: true, message: "User unblocked successfully" });
   } catch (error) {
