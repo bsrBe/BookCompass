@@ -11,7 +11,8 @@ const {
   getNearbyBookshops,
   searchBookshops,
   getAllBookshops,
-  updateBookshopFields
+  updateBookshopFields,
+  deleteBookShop
 } = require("../controllers/bookShopController");
 const { protect, authorize } = require("../middlewares/authMiddleware");
 
@@ -58,5 +59,8 @@ router.post(
 
 // Buyer routes
 router.post("/:id([0-9a-fA-F]{24})/reviews", authorize("buyer"), createReview);
+
+// Admin only routes
+router.delete("/:id([0-9a-fA-F]{24})", authorize("admin"), deleteBookShop);
 
 module.exports = router; 
