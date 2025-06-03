@@ -60,43 +60,80 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/userModel");
 
+// Protect routes
 const protect = async (req, res, next) => {
-  let token;
-
-  // Check for token in cookies (cookieToken)
-  if (req.cookies && req.cookies.cookieToken) {
-    token = req.cookies.cookieToken;
-  }
-  // Check for token in Authorization header (Bearer token)
-  else if (req.headers.authorization && req.headers.authorization.toLowerCase().startsWith('bearer')) {
-    token = req.headers.authorization.split(' ')[1];
-  }
-
-  // If no token is found in either cookies or Authorization header
-  if (!token) {
-    return res.status(401).json({ message: "Not authorized, no token" });
-  }
-
   try {
-    // Verify the token with JWT secret
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    let token;
 
-    // Attach the user to the request object (excluding password)
-    req.user = await User.findById(decoded.id).select("-password");
-
-    if (!req.user) {
-      return res.status(401).json({ message: "Not authorized, user not found" });
+    if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith('Bearer')
+    ) {
+      token = req.headers.authorization.split(' ')[1];
     }
 
-    // Proceed to the next middleware or route handler
-    next();
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        error: 'Not authorized to access this route',
+        message: 'Not authorized to access this route'
+      });
+    }
+
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      req.user = await User.findById(decoded.id);
+
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          error: 'User not found',
+          message: 'User not found'
+        });
+      }
+
+      // Check if user is blocked
+      if (req.user.isBlocked) {
+        return res.status(403).json({
+          success: false,
+          error: 'Account is blocked',
+          message: 'Your account has been blocked. Please contact support.'
+        });
+      }
+
+      next();
+    } catch (error) {
+      console.error('Token verification error:', error.message);
+      if (error.name === 'TokenExpiredError') {
+        return res.status(401).json({
+          success: false,
+          error: 'Token has expired',
+          message: 'Token has expired'
+        });
+      }
+      return res.status(401).json({
+        success: false,
+        error: 'Not authorized to access this route',
+        message: 'Not authorized to access this route'
+      });
+    }
   } catch (error) {
-    console.error('Token verification error:', error.message);
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ message: "Not authorized, token expired" });
-    }
-    return res.status(401).json({ message: "Not authorized, token invalid" });
+    next(error);
   }
+};
+
+// Grant access to specific roles
+const authorize = (...roles) => {
+  return (req, res, next) => {
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        error: `User role ${req.user.role} is not authorized to access this route`,
+        message: `User role ${req.user.role} is not authorized to access this route`
+      });
+    }
+    next();
+  };
 };
 
 const checkSellerRole = (req, res, next) => {
@@ -115,16 +152,4 @@ const checkBuyerRole = (req, res, next) => {
   }
 };
 
-const authorize = (...roles) => {
-  return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
-      return res
-        .status(403)
-        .json({ message: `this role ${req.user.role} is not authorized to access this route` });
-    }
-    next();
-  };
-};
-
-
-module.exports = { protect, checkSellerRole, checkBuyerRole , authorize };
+module.exports = { protect, checkSellerRole, checkBuyerRole, authorize };
