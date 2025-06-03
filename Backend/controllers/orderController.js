@@ -1180,7 +1180,7 @@ const verifyPayment = async (req, res) => {
         throw new Error("Failed to update order payment status");
       }
 
-      res.redirect(`/api/order/payment-success?tx_ref=${tx_ref}`);
+      // res.redirect(`/api/order/payment-success?tx_ref=${tx_ref}`);
     } else {
       order.paymentStatus = "failed";
       await order.save();
