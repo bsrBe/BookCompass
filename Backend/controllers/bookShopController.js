@@ -569,6 +569,7 @@ const getAllBookshops = async (req, res) => {
     try {
         const bookshops = await BookShop.find()
             .populate("seller", "name email")
+            .populate("availableBooks")
             .select("-reviews"); // Exclude reviews to keep response size manageable
 
         res.status(200).json({ 
