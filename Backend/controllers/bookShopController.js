@@ -684,6 +684,52 @@ const updateBookshopFields = async (req, res) => {
     }
 };
 
+// Delete bookshop (admin only)
+const deleteBookShop = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Check if user is admin
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ 
+                message: "Access denied. Only administrators can delete bookshops." 
+            });
+        }
+
+        // Validate bookshop ID
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ message: "Invalid bookshop ID" });
+        }
+
+        // Find and delete the bookshop
+        const bookShop = await BookShop.findById(id);
+        
+        if (!bookShop) {
+            return res.status(404).json({ message: "Bookshop not found" });
+        }
+
+        // Delete all reviews associated with this bookshop
+        await BookShopReview.deleteMany({ bookShop: id });
+
+        // Delete all books associated with this bookshop
+        await Book.deleteMany({ shop: id });
+
+        // Delete the bookshop
+        await bookShop.deleteOne();
+
+        res.status(200).json({ 
+            success: true, 
+            message: "Bookshop and all associated data have been deleted successfully" 
+        });
+    } catch (error) {
+        console.error("Error deleting bookshop:", error);
+        res.status(500).json({ 
+            message: "Failed to delete bookshop",
+            error: error.message 
+        });
+    }
+};
+
 module.exports = {
     createBookShop,
     updateBookShop,
@@ -694,5 +740,6 @@ module.exports = {
     getNearbyBookshops,
     searchBookshops,
     getAllBookshops,
-    updateBookshopFields
+    updateBookshopFields,
+    deleteBookShop
 }; 
