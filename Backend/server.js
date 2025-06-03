@@ -21,7 +21,7 @@ const bookShopRoutes = require("./routes/bookShopRoutes");
 // const opn = require('opn');
 const path = require("path"); 
 app.use(cors({
-  origin: ['http://localhost:8080', 'http://localhost:5173', 'http://localhost:3000','https://bookapi-c2zu.onrender.com' ,'https://bookcompass.onrender.com'],
+  origin: ['http://localhost:8080', 'http://localhost:5173', 'http://localhost:3000','https://new-gc-project.vercel.app' ,'https://bookcompass.onrender.com'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
